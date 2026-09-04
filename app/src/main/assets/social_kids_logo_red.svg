@@ -1,0 +1,67 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF7E7E"/>
+      <stop offset="45%" stop-color="#FF2E4D"/>
+      <stop offset="100%" stop-color="#A30E26"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.32"/>
+      <stop offset="35%" stop-color="#FFFFFF" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="playGrad" x1="15%" y1="10%" x2="85%" y2="90%">
+      <stop offset="0%" stop-color="#FF6B7A"/>
+      <stop offset="100%" stop-color="#D10F2E"/>
+    </linearGradient>
+    <radialGradient id="playHighlight" cx="35%" cy="30%" r="65%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#6E0C1C" flood-opacity="0.38"/>
+    </filter>
+    <filter id="playShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#7A0C1E" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+  <rect x="0" y="0" width="512" height="512" rx="128" fill="url(#bg)"/>
+  <path d="M0 128 A128 128 0 0 1 128 0 H384 A128 128 0 0 1 512 128 V140 H0 Z" fill="url(#shine)"/>
+  <g opacity="0.08" fill="#FFFFFF">
+    <circle cx="80" cy="80" r="10"/><circle cx="160" cy="56" r="6"/><circle cx="420" cy="84" r="8"/><circle cx="460" cy="160" r="5"/>
+    <circle cx="430" cy="430" r="9"/><circle cx="90" cy="430" r="7"/><circle cx="380" cy="390" r="5"/>
+  </g>
+  <g filter="url(#soft)">
+    <path d="M108 196 v154 a28 28 0 0 0 28 28 h240 a28 28 0 0 0 28 -28 v-126 a28 28 0 0 0 -28 -28 h-114 l-24 -32 h-102 a28 28 0 0 0 -28 28 z" fill="#FFFFFF"/>
+  </g>
+  <path d="M136 224 h208 a16 16 0 0 1 16 16 v-16 a28 28 0 0 0 -28 -28 h-102 l-8 -10 h-78 a28 28 0 0 0 -28 28 v16 a16 16 0 0 1 16 -16 z" fill="#FFF2F4" opacity="0.9"/>
+  <g fill="#FFE4E8" opacity="0.9">
+    <rect x="150" y="238" width="14" height="10" rx="2"/><rect x="176" y="238" width="14" height="10" rx="2"/>
+    <rect x="202" y="238" width="14" height="10" rx="2"/><rect x="228" y="238" width="14" height="10" rx="2"/>
+    <rect x="254" y="238" width="14" height="10" rx="2"/><rect x="280" y="238" width="14" height="10" rx="2"/>
+    <rect x="306" y="238" width="14" height="10" rx="2"/><rect x="332" y="238" width="14" height="10" rx="2"/>
+  </g>
+  <g filter="url(#playShadow)">
+    <circle cx="256" cy="298" r="66" fill="url(#playGrad)"/>
+    <circle cx="256" cy="298" r="66" fill="url(#playHighlight)"/>
+  </g>
+  <circle cx="256" cy="298" r="66" fill="none" stroke="#FFFFFF" stroke-width="5" opacity="0.88"/>
+  <circle cx="256" cy="298" r="62" fill="none" stroke="#FFFFFF" stroke-width="1.5" opacity="0.35"/>
+  <path d="M236.5 268.5 L292 298 L236.5 327.5 Z" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M236.5 268.5 L292 298 L236.5 327.5 Z" fill="#FFFFFF"/>
+  <g>
+    <circle cx="256" cy="132" r="32" fill="#FFFFFF"/>
+    <ellipse cx="244" cy="128" rx="5.5" ry="6.5" fill="#E8283E"/>
+    <ellipse cx="268" cy="128" rx="5.5" ry="6.5" fill="#E8283E"/>
+    <circle cx="245.5" cy="126" r="1.8" fill="#FFFFFF" opacity="0.9"/>
+    <circle cx="269.5" cy="126" r="1.8" fill="#FFFFFF" opacity="0.9"/>
+    <ellipse cx="232" cy="138" rx="8" ry="4.5" fill="#FFB3C0" opacity="0.9"/>
+    <ellipse cx="280" cy="138" rx="8" ry="4.5" fill="#FFB3C0" opacity="0.9"/>
+    <path d="M240 144 q16 14 32 0" stroke="#E8283E" stroke-width="4.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <g fill="#FFFFFF">
+    <path d="M430 56 l4 8 8 4 -8 4 -4 8 -4 -8 -8 -4 8 -4 z" opacity="0.95"/>
+    <path d="M460 120 l3 6 6 3 -6 3 -3 6 -3 -6 -6 -3 6 -3 z" opacity="0.75"/>
+    <path d="M82 382 l5 10 10 5 -10 5 -5 10 -5 -10 -10 -5 10 -5 z" opacity="0.85"/>
+  </g>
+</svg>
