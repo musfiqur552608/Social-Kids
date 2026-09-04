@@ -44,6 +44,8 @@ fun ShortsFeedScreen(
     BackHandler { onNavigateBack() }
     val shorts = viewModel.shorts.collectAsLazyPagingItems()
     val pagerState = rememberPagerState(pageCount = { shorts.itemCount.coerceAtLeast(1) })
+    // Global unmute for Shorts — fixes "unmute all then next paused, tap to start" (per-page muted caused next to be muted/paused)
+    var globalMuted by remember { mutableStateOf(false) } // false = always unmuted as requested
 
     Scaffold(
         topBar = {
@@ -66,13 +68,16 @@ fun ShortsFeedScreen(
                     }
                 }
             } else {
-                VerticalPager(state = pagerState, modifier = Modifier.fillMaxSize(), beyondViewportPageCount = 1) { idx ->
+                VerticalPager(state = pagerState, modifier = Modifier.fillMaxSize(), beyondViewportPageCount = 0) { idx ->
                     val item = shorts[idx]
+                    // Only settled page plays and only one player alive (no overlap, fixes previous sound after tap)
                     val isCurrent = pagerState.currentPage == idx
                     if (item != null) {
                         ShortsInlinePage(
                             item = item,
                             isCurrentPage = isCurrent,
+                            isMutedGlobal = globalMuted,
+                            onToggleMuteGlobal = { globalMuted = !globalMuted },
                             onTap = { onNavigateToPlayer(item.id) }
                         )
                     } else {
@@ -100,9 +105,9 @@ fun ShortsFeedScreen(
 }
 
 @Composable
-private fun ShortsInlinePage(item: MediaItem, isCurrentPage: Boolean, onTap: () -> Unit) {
+private fun ShortsInlinePage(item: MediaItem, isCurrentPage: Boolean, isMutedGlobal: Boolean, onToggleMuteGlobal: () -> Unit, onTap: () -> Unit) {
     var liked by remember(item.id) { mutableStateOf(item.isFavorite) }
-    var muted by remember { mutableStateOf(true) } // start muted for autoplay compliance like YouTube Shorts
+    val muted = isMutedGlobal // use global so unmute all persists to next video (fixes next paused need tap)
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         // --- Inline video / image rendering (same page, auto-plays like YouTube Shorts / Reels) ---
@@ -116,7 +121,7 @@ private fun ShortsInlinePage(item: MediaItem, isCurrentPage: Boolean, onTap: () 
                     autoPlay = true,
                     looping = true,
                     showControls = false,
-                    isMuted = muted,
+                    isMuted = isMutedGlobal,
                     isCurrentPage = isCurrentPage
                 )
             }
@@ -129,45 +134,28 @@ private fun ShortsInlinePage(item: MediaItem, isCurrentPage: Boolean, onTap: () 
                     autoPlay = true,
                     looping = true,
                     showControls = false,
-                    isMuted = muted,
+                    isMuted = isMutedGlobal,
                     isCurrentPage = isCurrentPage
                 )
             }
             is MediaItem.YoutubeLink -> {
-                // YouTube inline — dedicated player (reliable, muted autoplay like Shorts/Reels)
-                if (isCurrentPage) {
-                    YoutubePlayer(
-                        videoId = item.platformVideoId,
-                        externalUrl = item.externalUrl,
-                        modifier = Modifier.fillMaxSize(),
-                        autoPlay = true,
-                        mute = muted,
-                        loop = true
-                    )
-                } else {
-                    ThumbWithScrim(item, thumbnail = item.thumbnailPath)
-                }
+                YoutubePlayer(
+                    videoId = item.platformVideoId,
+                    externalUrl = item.externalUrl,
+                    modifier = Modifier.fillMaxSize(),
+                    autoPlay = isCurrentPage,
+                    mute = if (isCurrentPage) isMutedGlobal else true,
+                    loop = true
+                )
             }
             is MediaItem.TikTokLink -> {
-                if (isCurrentPage) {
-                    EmbeddedLinkPlayer(videoId = item.platformVideoId, platform = "TIKTOK", externalUrl = item.externalUrl, modifier = Modifier.fillMaxSize())
-                } else {
-                    ThumbWithScrim(item, thumbnail = item.thumbnailPath)
-                }
+                EmbeddedLinkPlayer(videoId = item.platformVideoId, platform = "TIKTOK", externalUrl = item.externalUrl, modifier = Modifier.fillMaxSize(), autoPlay = isCurrentPage, isMuted = if (isCurrentPage) isMutedGlobal else true, isCurrentPage = isCurrentPage)
             }
             is MediaItem.FacebookLink -> {
-                if (isCurrentPage) {
-                    EmbeddedLinkPlayer(videoId = item.platformVideoId, platform = "FACEBOOK", externalUrl = item.externalUrl, modifier = Modifier.fillMaxSize())
-                } else {
-                    ThumbWithScrim(item, thumbnail = item.thumbnailPath)
-                }
+                EmbeddedLinkPlayer(videoId = item.platformVideoId, platform = "FACEBOOK", externalUrl = item.externalUrl, modifier = Modifier.fillMaxSize(), autoPlay = isCurrentPage, isMuted = if (isCurrentPage) isMutedGlobal else true, isCurrentPage = isCurrentPage)
             }
             is MediaItem.GenericLink -> {
-                if (isCurrentPage) {
-                    EmbeddedLinkPlayer(videoId = item.externalUrl, platform = "GENERIC", externalUrl = item.externalUrl, modifier = Modifier.fillMaxSize())
-                } else {
-                    ThumbWithScrim(item, thumbnail = item.thumbnailPath)
-                }
+                EmbeddedLinkPlayer(videoId = item.externalUrl, platform = "GENERIC", externalUrl = item.externalUrl, modifier = Modifier.fillMaxSize(), autoPlay = isCurrentPage, isMuted = if (isCurrentPage) isMutedGlobal else true, isCurrentPage = isCurrentPage)
             }
             is MediaItem.LocalImage -> {
                 AsyncImage(model = item.sourceUri, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
@@ -232,13 +220,13 @@ private fun ShortsInlinePage(item: MediaItem, isCurrentPage: Boolean, onTap: () 
                 }
                 Text("${if (liked) 1 else 0}", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
-            // Mute toggle only relevant for videos
+            // Global mute toggle — affects app + embedded, next video auto-plays unmuted (fixes next paused need tap)
             if (item !is MediaItem.LocalImage && item !is MediaItem.OnlineImage) {
                 IconButton(
-                    onClick = { muted = !muted },
+                    onClick = { onToggleMuteGlobal() },
                     modifier = Modifier.size(48.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.15f))
                 ) {
-                    Icon(if (muted) Icons.Default.VolumeOff else Icons.Default.VolumeUp, null, tint = Color.White)
+                    Icon(if (isMutedGlobal) Icons.Default.VolumeOff else Icons.Default.VolumeUp, null, tint = Color.White)
                 }
             }
             // Fullscreen button (optional) - tap to go full player

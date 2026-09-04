@@ -173,19 +173,24 @@ fun HomeScreen(
                 }
             }
 
-            // Content grid - proper paging handling (no fallback to unfiltered list)
+            // Content grid - responsive (adaptive) for all mobile screens: phones 2-col, tablets 3-4, foldables adaptive
             when {
                 paging.itemCount > 0 -> {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
-                        modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
-                        contentPadding = PaddingValues(bottom = 20.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(paging.itemCount) { idx ->
-                            paging[idx]?.let { item ->
-                                MediaCard(item = item, onClick = { onNavigateToPlayer(item.id) })
+                    // BoxWithConstraints lets grid adapt to width (phones/tablets/foldables/landscape)
+                    BoxWithConstraints(Modifier.fillMaxSize()) {
+                        val minCard = 160.dp
+                        val cols = (maxWidth / minCard).toInt().coerceIn(2, 4)
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(cols),
+                            modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
+                            contentPadding = PaddingValues(bottom = 20.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(paging.itemCount) { idx ->
+                                paging[idx]?.let { item ->
+                                    MediaCard(item = item, onClick = { onNavigateToPlayer(item.id) })
+                                }
                             }
                         }
                     }

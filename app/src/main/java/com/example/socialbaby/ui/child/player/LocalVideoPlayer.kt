@@ -193,6 +193,16 @@ fun LocalVideoPlayer(
             update = { pv ->
                 pv.player = player
                 pv.useController = showControls
+                // Immediate pause/mute for off-screen Shorts (prevents previous sound overlap on swipe/tap)
+                pv.player?.let { p ->
+                    p.volume = if (isMuted) 0f else 1f
+                    p.playWhenReady = autoPlay && isCurrentPage
+                    if (isCurrentPage && autoPlay) {
+                        if (!p.isPlaying) p.play()
+                    } else {
+                        p.pause()
+                    }
+                }
             }
         )
 

@@ -106,6 +106,8 @@ dependencies {
 
     // YouTube Player (reliable embed fix — replaces fragile WebView iframe_api)
     implementation(libs.youtube.player)
+    // Splash Screen
+    implementation(libs.androidx.splashscreen)
 
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))

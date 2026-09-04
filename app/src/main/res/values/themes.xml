@@ -2,4 +2,14 @@
 <resources>
 
     <style name="Theme.SocialBaby" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!-- Splash Screen with Social Kids logo -->
+    <style name="Theme.SocialKids.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/social_kids_logo_red</item>
+        <item name="windowSplashScreenIconBackgroundColor">@color/splash_icon_bg</item>
+        <item name="windowSplashScreenAnimationDuration">900</item>
+        <item name="postSplashScreenTheme">@style/Theme.SocialBaby</item>
+        <item name="android:windowSplashScreenBrandingImage">@drawable/social_kids_logo_red</item>
+    </style>
 </resources>

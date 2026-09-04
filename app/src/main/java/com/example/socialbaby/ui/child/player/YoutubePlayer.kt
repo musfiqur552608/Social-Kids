@@ -46,6 +46,18 @@ fun YoutubePlayer(
         youTubePlayer?.let { if (mute) it.mute() else it.unMute() }
     }
 
+    LaunchedEffect(autoPlay) {
+        // When scrolling to this Short, autoPlay flips false→true → start playing (fixes not auto-start on scroll)
+        youTubePlayer?.let {
+            if (autoPlay) {
+                it.play()
+                if (mute) it.mute() else it.unMute()
+            } else {
+                it.pause()
+            }
+        }
+    }
+
     LaunchedEffect(videoId) {
         // When videoId changes and player is ready, load new video
         youTubePlayer?.let {
@@ -74,8 +86,14 @@ fun YoutubePlayer(
                             youTubePlayer = player
                             loading = false
                             onReady?.invoke()
-                            if (mute) player.mute() else player.unMute()
                             if (autoPlay) player.loadVideo(videoId, 0f) else player.cueVideo(videoId, 0f)
+                            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                if (mute) player.mute() else player.unMute()
+                            }, 350)
+                            // Delay mute slightly to ensure YouTube JS has initialized
+                            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                if (mute) player.mute() else player.unMute()
+                            }, 300)
                         }
                         override fun onStateChange(player: YouTubePlayer, state: PlayerConstants.PlayerState) {
                             if (state == PlayerConstants.PlayerState.PLAYING) loading = false

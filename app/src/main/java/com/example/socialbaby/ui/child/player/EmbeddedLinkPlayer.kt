@@ -37,24 +37,26 @@ fun EmbeddedLinkPlayer(
     videoId: String,
     platform: String, // YOUTUBE, TIKTOK, FACEBOOK, GENERIC
     externalUrl: String? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    autoPlay: Boolean = true,
+    isMuted: Boolean = true,
+    isCurrentPage: Boolean = true
 ) {
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var triedFallback by remember { mutableStateOf(false) }
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
 
-    // Build embed URL — direct loadUrl is more reliable than data URL
-    // For GENERIC (your own platform), we load the original URL directly so ANY site works
+    // Build embed URL — always muted autoplay for preload (fixes huge load time), unmute via JS when current
+    // isMuted/autoPlay are handled via JS after load, not via URL reload, to avoid reload on swipe
     val embedUrl = remember(videoId, platform, externalUrl) {
         when (platform) {
             "YOUTUBE" -> {
                 val id = videoId.trim()
                 if (id.matches(Regex("[A-Za-z0-9_-]{6,}")) && id.length in 6..20) {
-                    // Use nocookie + origin for best embed compatibility, muted autoplay to allow inline
-                    "https://www.youtube-nocookie.com/embed/$id?playsinline=1&rel=0&modestbranding=1&controls=1&iv_load_policy=3&autoplay=1&mute=1&enablejsapi=0&origin=https://www.youtube.com"
+                    // Always muted autoplay for preload, will unmute via JS if needed
+                    "https://www.youtube-nocookie.com/embed/$id?playsinline=1&rel=0&modestbranding=1&controls=1&iv_load_policy=3&autoplay=1&mute=1&enablejsapi=1&origin=https://www.youtube.com"
                 } else {
-                    // Invalid id → fallback to original watch URL (pasted URL) so user still sees video page
                     externalUrl ?: "https://www.youtube.com/watch?v=$id"
                 }
             }
@@ -74,10 +76,7 @@ fun EmbeddedLinkPlayer(
                 val enc = try { java.net.URLEncoder.encode(href, "UTF-8") } catch (e: Exception) { href }
                 "https://www.facebook.com/plugins/video.php?href=$enc&show_text=false&autoplay=true&allowfullscreen=true&width=560"
             }
-            "GENERIC" -> {
-                // Your own platform — load the exact URL the parent pasted. This fixes "embedded any video not working" for custom sites.
-                externalUrl ?: videoId
-            }
+            "GENERIC" -> externalUrl ?: videoId
             else -> externalUrl ?: videoId
         }
     }
@@ -105,14 +104,17 @@ fun EmbeddedLinkPlayer(
                         allowFileAccessFromFileURLs = true
                         allowUniversalAccessFromFileURLs = true
                         javaScriptCanOpenWindowsAutomatically = true
-                        setSupportMultipleWindows(true)
+                        setSupportMultipleWindows(false) // block popups that would leave app
                         mediaPlaybackRequiresUserGesture = false
-                        cacheMode = WebSettings.LOAD_DEFAULT
+                        // LOAD_CACHE_ELSE_NETWORK speeds up reloads (fixes huge load time)
+                        cacheMode = WebSettings.LOAD_CACHE_ELSE_NETWORK
                         useWideViewPort = true
                         loadWithOverviewMode = true
                         builtInZoomControls = false
                         displayZoomControls = false
                         setSupportZoom(false)
+                        blockNetworkImage = false
+                        loadsImagesAutomatically = true
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                             mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
                         }
@@ -123,7 +125,11 @@ fun EmbeddedLinkPlayer(
                     CookieManager.getInstance().setAcceptCookie(true)
                     isVerticalScrollBarEnabled = false
                     isHorizontalScrollBarEnabled = false
-                    webChromeClient = WebChromeClient()
+                    webChromeClient = object : WebChromeClient() {
+                        override fun onCreateWindow(view: WebView?, isDialog: Boolean, isUserGesture: Boolean, resultMsg: android.os.Message?): Boolean {
+                            return false
+                        }
+                    }
                     webViewClient = object : WebViewClient() {
                         override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                             loading = true
@@ -131,6 +137,23 @@ fun EmbeddedLinkPlayer(
                         }
                         override fun onPageFinished(view: WebView?, url: String?) {
                             loading = false
+                            // Ensure always unmuted when requested (user wants app+embedded unmuted)
+                            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                if (isCurrentPage) {
+                                    if (isMuted) {
+                                        view?.evaluateJavascript("(function(){try{ document.querySelectorAll('video').forEach(v=>{v.muted=true; v.volume=0;}); var auds=document.querySelectorAll('audio');auds.forEach(a=>a.muted=true);}catch(e){}})();", null)
+                                        view?.evaluateJavascript("try{ var ifr=document.querySelector('iframe'); if(ifr) ifr.contentWindow.postMessage('{\"event\":\"command\",\"func\":\"mute\",\"args\":[]}', '*'); }catch(e){}", null)
+                                    } else {
+                                        view?.evaluateJavascript("(function(){try{ document.querySelectorAll('video').forEach(v=>{v.muted=false; v.volume=1; v.play().catch(()=>{});}); var auds=document.querySelectorAll('audio');auds.forEach(a=>{a.muted=false;});}catch(e){}})();", null)
+                                        view?.evaluateJavascript("try{ var ifr=document.querySelector('iframe'); if(ifr){ ifr.contentWindow.postMessage('{\"event\":\"command\",\"func\":\"unMute\",\"args\":[]}', '*'); ifr.contentWindow.postMessage('{\"event\":\"command\",\"func\":\"playVideo\",\"args\":[]}', '*'); } }catch(e){}", null)
+                                        // Extra attempt for TikTok/Facebook generic video tag inside iframe
+                                        view?.evaluateJavascript("(function(){try{ var ifr=document.querySelector('iframe'); if(ifr && ifr.contentDocument){ var v=ifr.contentDocument.querySelector('video'); if(v){v.muted=false; v.volume=1; v.play().catch(()=>{});} } }catch(e){}})();", null)
+                                    }
+                                } else {
+                                    view?.evaluateJavascript("(function(){try{ document.querySelectorAll('video').forEach(v=>v.pause()); }catch(e){}})();", null)
+                                    view?.evaluateJavascript("try{ var ifr=document.querySelector('iframe'); if(ifr) ifr.contentWindow.postMessage('{\"event\":\"command\",\"func\":\"pauseVideo\",\"args\":[]}', '*'); }catch(e){}", null)
+                                }
+                            }, 600)
                         }
                         override fun onReceivedError(view: WebView?, errorCode: Int, description: String?, failingUrl: String?) {
                             if (!triedFallback && externalUrl != null && failingUrl != externalUrl && (
@@ -155,9 +178,44 @@ fun EmbeddedLinkPlayer(
                 webViewRef = wv
                 if (wv.url != currentUrl) {
                     wv.loadUrl(currentUrl)
+                } else {
+                    // Immediate play/pause/mute handling on swipe (fixes previous sound overlap + next paused need tap)
+                    if (isCurrentPage) {
+                        if (isMuted) {
+                            wv.evaluateJavascript("(function(){try{ document.querySelectorAll('video').forEach(v=>{v.muted=true; v.volume=0; v.pause();}); }catch(e){}})();", null)
+                            wv.evaluateJavascript("try{ var ifr=document.querySelector('iframe'); if(ifr) ifr.contentWindow.postMessage('{\"event\":\"command\",\"func\":\"mute\",\"args\":[]}', '*'); }catch(e){}", null)
+                        } else {
+                            wv.evaluateJavascript("(function(){try{ document.querySelectorAll('video').forEach(v=>{v.muted=false; v.volume=1; v.play().catch(()=>{});}); }catch(e){}})();", null)
+                            wv.evaluateJavascript("try{ var ifr=document.querySelector('iframe'); if(ifr){ ifr.contentWindow.postMessage('{\"event\":\"command\",\"func\":\"unMute\",\"args\":[]}', '*'); ifr.contentWindow.postMessage('{\"event\":\"command\",\"func\":\"playVideo\",\"args\":[]}', '*'); } }catch(e){}", null)
+                        }
+                    } else {
+                        wv.evaluateJavascript("(function(){try{ document.querySelectorAll('video').forEach(v=>v.pause()); }catch(e){}})();", null)
+                        wv.evaluateJavascript("try{ var ifr=document.querySelector('iframe'); if(ifr) ifr.contentWindow.postMessage('{\"event\":\"command\",\"func\":\"pauseVideo\",\"args\":[]}', '*'); }catch(e){}", null)
+                    }
                 }
             }
         )
+
+        // Handle Shorts swipe: ensure always unmuted when current (user request) — unmute both app and embedded
+        LaunchedEffect(isCurrentPage, isMuted) {
+            webViewRef?.let { wv ->
+                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                    if (isCurrentPage) {
+                        if (isMuted) {
+                            wv.evaluateJavascript("(function(){try{ document.querySelectorAll('video').forEach(v=>{v.muted=true; v.volume=0;}); }catch(e){}})();", null)
+                            wv.evaluateJavascript("try{ var ifr=document.querySelector('iframe'); if(ifr) ifr.contentWindow.postMessage('{\"event\":\"command\",\"func\":\"mute\",\"args\":[]}', '*'); }catch(e){}", null)
+                        } else {
+                            wv.evaluateJavascript("(function(){try{ document.querySelectorAll('video').forEach(v=>{v.muted=false; v.volume=1; v.play().catch(()=>{});}); var auds=document.querySelectorAll('audio');auds.forEach(a=>{a.muted=false;}); }catch(e){}})();", null)
+                            wv.evaluateJavascript("try{ var ifr=document.querySelector('iframe'); if(ifr){ ifr.contentWindow.postMessage('{\"event\":\"command\",\"func\":\"unMute\",\"args\":[]}', '*'); ifr.contentWindow.postMessage('{\"event\":\"command\",\"func\":\"playVideo\",\"args\":[]}', '*'); } }catch(e){}", null)
+                            wv.evaluateJavascript("(function(){try{ var ifr=document.querySelector('iframe'); if(ifr && ifr.contentDocument){ var v=ifr.contentDocument.querySelector('video'); if(v){v.muted=false; v.volume=1; v.play().catch(()=>{});} } }catch(e){}})();", null)
+                        }
+                    } else {
+                        wv.evaluateJavascript("(function(){try{ document.querySelectorAll('video').forEach(v=>v.pause()); }catch(e){}})();", null)
+                        wv.evaluateJavascript("try{ var ifr=document.querySelector('iframe'); if(ifr) ifr.contentWindow.postMessage('{\"event\":\"command\",\"func\":\"pauseVideo\",\"args\":[]}', '*'); }catch(e){}", null)
+                    }
+                }, 120)
+            }
+        }
 
         if (loading) {
             CircularProgressIndicator(

@@ -154,7 +154,7 @@ fun PlayerScreen(
                     )
                 }
                 is MediaItem.YoutubeLink -> {
-                    // Dedicated YouTube player — far more reliable than WebView iframe_api (fixes embedded any video)
+                    // Dedicated YouTube player — reliable, handles 150/153 fallback to WebView
                     YoutubePlayer(videoId = media.platformVideoId, externalUrl = media.externalUrl, modifier = Modifier.fillMaxSize(), autoPlay = true, mute = false, loop = false)
                 }
                 is MediaItem.TikTokLink -> {

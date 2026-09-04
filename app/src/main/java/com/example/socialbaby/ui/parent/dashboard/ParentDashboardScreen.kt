@@ -109,16 +109,20 @@ fun ParentDashboardScreen(
                     }
                 }
             } else {
-                LazyVerticalGrid(columns = GridCells.Fixed(2), modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 80.dp)) {
-                    items(media.size) { idx ->
-                        val item = media[idx]
-                        ParentMediaCard(
-                            item = item,
-                            onPreview = { onPreviewItem(item.id) },
-                            onDelete = { viewModel.deleteItem(item) },
-                            onToggleFav = { viewModel.toggleFavorite(item.id) },
-                            onEdit = { editingItem = item }
-                        )
+                // Responsive grid: 2 cols phones, 3-4 tablets/foldables
+                BoxWithConstraints(Modifier.fillMaxSize()) {
+                    val cols = (maxWidth / 160.dp).toInt().coerceIn(2, 4)
+                    LazyVerticalGrid(columns = GridCells.Fixed(cols), modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 80.dp)) {
+                        items(media.size) { idx ->
+                            val item = media[idx]
+                            ParentMediaCard(
+                                item = item,
+                                onPreview = { onPreviewItem(item.id) },
+                                onDelete = { viewModel.deleteItem(item) },
+                                onToggleFav = { viewModel.toggleFavorite(item.id) },
+                                onEdit = { editingItem = item }
+                            )
+                        }
                     }
                 }
             }
