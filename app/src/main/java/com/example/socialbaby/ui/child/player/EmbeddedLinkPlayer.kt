@@ -376,10 +376,11 @@ fun EmbeddedLinkPlayer(
                     lastLoadedUrl = currentUrl
                     wv.loadTarget(currentUrl)
                 } else {
-                    // Immediate play/pause/mute handling on swipe (fixes previous sound overlap + next paused need tap)
+                    // Immediate play/pause/mute handling on swipe (fixes previous sound overlap + next paused need tap).
+                    // Mute must NEVER pause: pause happens only when the page is not current.
                     if (isCurrentPage) {
                         if (isMuted) {
-                            wv.evaluateJavascript("(function(){try{ document.querySelectorAll('video').forEach(v=>{v.muted=true; v.volume=0; v.pause();}); }catch(e){}})();", null)
+                            wv.evaluateJavascript("(function(){try{ document.querySelectorAll('video').forEach(v=>{v.muted=true; v.volume=0;}); }catch(e){}})();", null)
                             wv.evaluateJavascript("try{ var ifr=document.querySelector('iframe'); if(ifr) ifr.contentWindow.postMessage('{\"event\":\"command\",\"func\":\"mute\",\"args\":[]}', '*'); }catch(e){}", null)
                         } else {
                             wv.evaluateJavascript("(function(){try{ document.querySelectorAll('video').forEach(v=>{v.muted=false; v.volume=1; v.play().catch(()=>{});}); }catch(e){}})();", null)
