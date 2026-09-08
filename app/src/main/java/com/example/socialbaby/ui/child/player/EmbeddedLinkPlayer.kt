@@ -51,7 +51,8 @@ fun EmbeddedLinkPlayer(
     modifier: Modifier = Modifier,
     autoPlay: Boolean = true,
     isMuted: Boolean = true,
-    isCurrentPage: Boolean = true
+    isCurrentPage: Boolean = true,
+    onWatchTime: (deltaMs: Long) -> Unit = {}
 ) {
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -461,6 +462,19 @@ fun EmbeddedLinkPlayer(
                 while (isCurrentPage) {
                     kotlinx.coroutines.delay(2500)
                     webViewRef?.evaluateJavascript(youtubeStripJs, null)
+                }
+            }
+        }
+
+        // Report watch time for history/time-limits. WebViews expose no playback
+        // position, so this reports wall-clock viewing in 2s ticks (same cadence
+        // as the ExoPlayer/IFrame paths). Only while actually watching: current
+        // page, finished loading, no error/wall/blank overlays.
+        LaunchedEffect(isCurrentPage) {
+            while (true) {
+                kotlinx.coroutines.delay(2000)
+                if (isCurrentPage && !loading && error == null && !blankPage) {
+                    onWatchTime(2000)
                 }
             }
         }

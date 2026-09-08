@@ -66,6 +66,12 @@ class MediaRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun recordWatchTime(id: Long, deltaMs: Long) {
+        if (deltaMs > 0) {
+            watchLogDao.insert(WatchLogEntity(mediaItemId = id, durationMs = deltaMs))
+        }
+    }
+
     override suspend fun toggleFavorite(id: Long) {
         val item = dao.getById(id) ?: return
         dao.setFavorite(id, !item.isFavorite)

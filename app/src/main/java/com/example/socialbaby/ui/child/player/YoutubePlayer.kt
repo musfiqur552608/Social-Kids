@@ -41,6 +41,7 @@ import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstan
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.YouTubePlayer
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.listeners.AbstractYouTubePlayerListener
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.options.IFramePlayerOptions
+import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.utils.YouTubePlayerTracker
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTubePlayerView
 
 @Composable
@@ -51,7 +52,10 @@ fun YoutubePlayer(
     mute: Boolean = false,
     loop: Boolean = false,
     externalUrl: String? = null,
-    onReady: (() -> Unit)? = null
+    onReady: (() -> Unit)? = null,
+    onPositionChanged: (positionMs: Long, deltaMs: Long) -> Unit = { _, _ -> },
+    /** Wall-clock watch time for fallback WebView modes (no knowable position). */
+    onWatchTime: (deltaMs: Long) -> Unit = {}
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
     var loading by remember { mutableStateOf(true) }
@@ -80,6 +84,8 @@ fun YoutubePlayer(
     // Used when the library player stalls silently (in-frame 152 screens fire
     // no onError, so without this the video would sit broken forever).
     var fallbackToEmbed by remember { mutableStateOf(false) }
+    // Tracks playback position via IFrame callbacks (same 2s cadence as ExoPlayer).
+    val tracker = remember { YouTubePlayerTracker() }
 
     fun applyMute(p: YouTubePlayer, wantMuted: Boolean) {
         try {
@@ -110,6 +116,25 @@ fun YoutubePlayer(
             kotlinx.coroutines.delay(1600)
             youTubePlayer?.let { p ->
                 try { p.unMute(); p.setVolume(100) } catch (_: Exception) {}
+            }
+        }
+    }
+
+    // Report watch time for history/time-limits (mirrors LocalVideoPlayer's 2s
+    // polling; same 1..9000ms delta guard so seeks don't inflate totals).
+    LaunchedEffect(videoId) {
+        var lastSec = 0f
+        while (true) {
+            kotlinx.coroutines.delay(2000)
+            if (tracker.state == PlayerConstants.PlayerState.PLAYING) {
+                val sec = tracker.currentSecond
+                val delta = ((sec - lastSec) * 1000).toLong()
+                if (delta in 1..9000) {
+                    onPositionChanged((sec * 1000).toLong(), delta)
+                }
+                lastSec = sec
+            } else {
+                lastSec = tracker.currentSecond
             }
         }
     }
@@ -171,7 +196,9 @@ fun YoutubePlayer(
             modifier = modifier,
             autoPlay = autoPlay,
             isMuted = mute,
-            isCurrentPage = true
+            // autoPlay mirrors page visibility (Shorts passes autoPlay=isCurrentPage).
+            isCurrentPage = autoPlay,
+            onWatchTime = onWatchTime
         )
         return
     }
@@ -187,7 +214,9 @@ fun YoutubePlayer(
             modifier = modifier,
             autoPlay = autoPlay,
             isMuted = mute,
-            isCurrentPage = true
+            // autoPlay mirrors page visibility (Shorts passes autoPlay=isCurrentPage).
+            isCurrentPage = autoPlay,
+            onWatchTime = onWatchTime
         )
         return
     }
@@ -213,6 +242,7 @@ fun YoutubePlayer(
                     initialize(object : AbstractYouTubePlayerListener() {
                         override fun onReady(player: YouTubePlayer) {
                             youTubePlayer = player
+                            try { player.addListener(tracker) } catch (_: Exception) {}
                             loading = false
                             Log.d("KidTubePlayer", "YT ready id=$videoId autoplay=$autoPlay")
                             onReady?.invoke()

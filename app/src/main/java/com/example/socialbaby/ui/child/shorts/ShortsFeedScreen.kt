@@ -78,6 +78,9 @@ fun ShortsFeedScreen(
                             isCurrentPage = isCurrent,
                             isMutedGlobal = globalMuted,
                             onToggleMuteGlobal = { globalMuted = !globalMuted },
+                            onToggleFavorite = { viewModel.toggleFavorite(item.id) },
+                            onWatchProgress = { id, pos, delta -> viewModel.saveWatchProgress(id, pos, delta) },
+                            onWatchTime = { id, delta -> viewModel.recordWatchTime(id, delta) },
                             onTap = { onNavigateToPlayer(item.id) }
                         )
                     } else {
@@ -105,7 +108,7 @@ fun ShortsFeedScreen(
 }
 
 @Composable
-private fun ShortsInlinePage(item: MediaItem, isCurrentPage: Boolean, isMutedGlobal: Boolean, onToggleMuteGlobal: () -> Unit, onTap: () -> Unit) {
+private fun ShortsInlinePage(item: MediaItem, isCurrentPage: Boolean, isMutedGlobal: Boolean, onToggleMuteGlobal: () -> Unit, onToggleFavorite: () -> Unit, onWatchProgress: (Long, Long, Long) -> Unit, onWatchTime: (Long, Long) -> Unit, onTap: () -> Unit) {
     var liked by remember(item.id) { mutableStateOf(item.isFavorite) }
     val muted = isMutedGlobal // use global so unmute all persists to next video (fixes next paused need tap)
 
@@ -116,7 +119,7 @@ private fun ShortsInlinePage(item: MediaItem, isCurrentPage: Boolean, isMutedGlo
                 LocalVideoPlayer(
                     uri = item.sourceUri,
                     startPositionMs = 0,
-                    onPositionChanged = { _, _ -> },
+                    onPositionChanged = { pos, delta -> onWatchProgress(item.id, pos, delta) },
                     modifier = Modifier.fillMaxSize(),
                     autoPlay = true,
                     looping = true,
@@ -129,7 +132,7 @@ private fun ShortsInlinePage(item: MediaItem, isCurrentPage: Boolean, isMutedGlo
                 LocalVideoPlayer(
                     uri = item.externalUrl,
                     startPositionMs = 0,
-                    onPositionChanged = { _, _ -> },
+                    onPositionChanged = { pos, delta -> onWatchProgress(item.id, pos, delta) },
                     modifier = Modifier.fillMaxSize(),
                     autoPlay = true,
                     looping = true,
@@ -145,11 +148,13 @@ private fun ShortsInlinePage(item: MediaItem, isCurrentPage: Boolean, isMutedGlo
                     modifier = Modifier.fillMaxSize(),
                     autoPlay = isCurrentPage,
                     mute = if (isCurrentPage) isMutedGlobal else true,
-                    loop = true
+                    loop = true,
+                    onPositionChanged = { pos, delta -> onWatchProgress(item.id, pos, delta) },
+                    onWatchTime = { delta -> onWatchTime(item.id, delta) }
                 )
             }
             is MediaItem.GenericLink -> {
-                EmbeddedLinkPlayer(videoId = item.externalUrl, platform = "GENERIC", externalUrl = item.externalUrl, modifier = Modifier.fillMaxSize(), autoPlay = isCurrentPage, isMuted = if (isCurrentPage) isMutedGlobal else true, isCurrentPage = isCurrentPage)
+                EmbeddedLinkPlayer(videoId = item.externalUrl, platform = "GENERIC", externalUrl = item.externalUrl, modifier = Modifier.fillMaxSize(), autoPlay = isCurrentPage, isMuted = if (isCurrentPage) isMutedGlobal else true, isCurrentPage = isCurrentPage, onWatchTime = { delta -> onWatchTime(item.id, delta) })
             }
             is MediaItem.LocalImage -> {
                 AsyncImage(model = item.sourceUri, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
@@ -200,7 +205,7 @@ private fun ShortsInlinePage(item: MediaItem, isCurrentPage: Boolean, isMutedGlo
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 IconButton(
-                    onClick = { liked = !liked },
+                    onClick = { liked = !liked; onToggleFavorite() },
                     modifier = Modifier.size(52.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.15f))
                 ) {
                     Icon(

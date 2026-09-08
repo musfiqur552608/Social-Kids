@@ -153,11 +153,11 @@ fun PlayerScreen(
                 }
                 is MediaItem.YoutubeLink -> {
                     // Dedicated YouTube player — reliable, handles 150/153 fallback to WebView
-                    YoutubePlayer(videoId = media.platformVideoId, externalUrl = media.externalUrl, modifier = Modifier.fillMaxSize(), autoPlay = true, mute = false, loop = false)
+                    YoutubePlayer(videoId = media.platformVideoId, externalUrl = media.externalUrl, modifier = Modifier.fillMaxSize(), autoPlay = true, mute = false, loop = false, onPositionChanged = { pos, delta -> viewModel.saveProgress(pos, delta) }, onWatchTime = { delta -> viewModel.recordWatchTime(delta) })
                 }
                 is MediaItem.GenericLink -> {
                     // Any platform link (your own site) — loads directly in secure WebView, no external app
-                    EmbeddedLinkPlayer(videoId = media.externalUrl, platform = "GENERIC", externalUrl = media.externalUrl, modifier = Modifier.fillMaxSize())
+                    EmbeddedLinkPlayer(videoId = media.externalUrl, platform = "GENERIC", externalUrl = media.externalUrl, modifier = Modifier.fillMaxSize(), onWatchTime = { delta -> viewModel.recordWatchTime(delta) })
                 }
             }
 

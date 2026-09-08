@@ -33,6 +33,13 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    fun recordWatchTime(deltaMs: Long) {
+        val id = _item.value?.id ?: return
+        viewModelScope.launch {
+            mediaRepo.recordWatchTime(id, deltaMs)
+        }
+    }
+
     fun toggleFavorite() {
         val id = _item.value?.id ?: return
         viewModelScope.launch { mediaRepo.toggleFavorite(id) }

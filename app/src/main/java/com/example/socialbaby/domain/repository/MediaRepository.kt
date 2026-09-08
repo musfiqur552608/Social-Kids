@@ -19,6 +19,10 @@ interface MediaRepository {
     suspend fun delete(item: MediaItem)
     suspend fun deleteById(id: Long)
     suspend fun saveWatchProgress(id: Long, positionMs: Long, deltaMs: Long)
+    /** Records watched time WITHOUT touching resume position (for WebView
+     * playback where no position is knowable). Never pass 0/stale positions
+     * into saveWatchProgress — it would wipe the resume point. */
+    suspend fun recordWatchTime(id: Long, deltaMs: Long)
     suspend fun toggleFavorite(id: Long)
     suspend fun moveToShelf(id: Long, shelfId: Long?)
 }
