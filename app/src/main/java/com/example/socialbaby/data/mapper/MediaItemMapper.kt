@@ -29,20 +29,6 @@ fun MediaItemEntity.toDomain(): MediaItem {
             totalWatchTimeMs = totalWatchTimeMs, isFavorite = isFavorite,
             externalUrl = externalUrl ?: "", platformVideoId = platformVideoId ?: ""
         )
-        MediaType.TIKTOK_LINK.name -> MediaItem.TikTokLink(
-            id = id, title = title, thumbnailPath = thumbnailPath,
-            shelfId = shelfId, sortOrder = sortOrder, dateAdded = dateAdded,
-            lastWatchedPositionMs = lastWatchedPositionMs, lastWatchedAt = lastWatchedAt,
-            totalWatchTimeMs = totalWatchTimeMs, isFavorite = isFavorite,
-            externalUrl = externalUrl ?: "", platformVideoId = platformVideoId ?: ""
-        )
-        MediaType.FACEBOOK_LINK.name -> MediaItem.FacebookLink(
-            id = id, title = title, thumbnailPath = thumbnailPath,
-            shelfId = shelfId, sortOrder = sortOrder, dateAdded = dateAdded,
-            lastWatchedPositionMs = lastWatchedPositionMs, lastWatchedAt = lastWatchedAt,
-            totalWatchTimeMs = totalWatchTimeMs, isFavorite = isFavorite,
-            externalUrl = externalUrl ?: "", platformVideoId = platformVideoId ?: ""
-        )
         MediaType.ONLINE_VIDEO.name -> MediaItem.OnlineVideo(
             id = id, title = title, thumbnailPath = thumbnailPath,
             shelfId = shelfId, sortOrder = sortOrder, dateAdded = dateAdded,
@@ -79,8 +65,6 @@ fun MediaItem.toEntity(): MediaItemEntity {
         is MediaItem.LocalVideo -> MediaType.LOCAL_VIDEO.name
         is MediaItem.LocalImage -> MediaType.LOCAL_IMAGE.name
         is MediaItem.YoutubeLink -> MediaType.YOUTUBE_LINK.name
-        is MediaItem.TikTokLink -> MediaType.TIKTOK_LINK.name
-        is MediaItem.FacebookLink -> MediaType.FACEBOOK_LINK.name
         is MediaItem.OnlineVideo -> MediaType.ONLINE_VIDEO.name
         is MediaItem.OnlineImage -> MediaType.ONLINE_IMAGE.name
         is MediaItem.GenericLink -> MediaType.GENERIC_LINK.name
@@ -92,8 +76,6 @@ fun MediaItem.toEntity(): MediaItemEntity {
     }
     val externalUrl = when (this) {
         is MediaItem.YoutubeLink -> externalUrl
-        is MediaItem.TikTokLink -> externalUrl
-        is MediaItem.FacebookLink -> externalUrl
         is MediaItem.OnlineVideo -> externalUrl
         is MediaItem.OnlineImage -> externalUrl
         is MediaItem.GenericLink -> externalUrl
@@ -101,8 +83,6 @@ fun MediaItem.toEntity(): MediaItemEntity {
     }
     val platformVideoId = when (this) {
         is MediaItem.YoutubeLink -> platformVideoId
-        is MediaItem.TikTokLink -> platformVideoId
-        is MediaItem.FacebookLink -> platformVideoId
         else -> null
     }
     return MediaItemEntity(

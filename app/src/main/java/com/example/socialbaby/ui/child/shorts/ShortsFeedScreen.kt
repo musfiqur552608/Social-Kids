@@ -148,12 +148,6 @@ private fun ShortsInlinePage(item: MediaItem, isCurrentPage: Boolean, isMutedGlo
                     loop = true
                 )
             }
-            is MediaItem.TikTokLink -> {
-                EmbeddedLinkPlayer(videoId = item.platformVideoId, platform = "TIKTOK", externalUrl = item.externalUrl, modifier = Modifier.fillMaxSize(), autoPlay = isCurrentPage, isMuted = if (isCurrentPage) isMutedGlobal else true, isCurrentPage = isCurrentPage)
-            }
-            is MediaItem.FacebookLink -> {
-                EmbeddedLinkPlayer(videoId = item.platformVideoId, platform = "FACEBOOK", externalUrl = item.externalUrl, modifier = Modifier.fillMaxSize(), autoPlay = isCurrentPage, isMuted = if (isCurrentPage) isMutedGlobal else true, isCurrentPage = isCurrentPage)
-            }
             is MediaItem.GenericLink -> {
                 EmbeddedLinkPlayer(videoId = item.externalUrl, platform = "GENERIC", externalUrl = item.externalUrl, modifier = Modifier.fillMaxSize(), autoPlay = isCurrentPage, isMuted = if (isCurrentPage) isMutedGlobal else true, isCurrentPage = isCurrentPage)
             }
@@ -183,8 +177,6 @@ private fun ShortsInlinePage(item: MediaItem, isCurrentPage: Boolean, isMutedGlo
                 Text(
                     when (item) {
                         is MediaItem.YoutubeLink -> "YOUTUBE"
-                        is MediaItem.TikTokLink -> "TIKTOK"
-                        is MediaItem.FacebookLink -> "FACEBOOK"
                         is MediaItem.LocalVideo -> "VIDEO"
                         is MediaItem.OnlineVideo -> "VIDEO"
                         is MediaItem.GenericLink -> "WEB"
@@ -200,7 +192,7 @@ private fun ShortsInlinePage(item: MediaItem, isCurrentPage: Boolean, isMutedGlo
             Text(if (isCurrentPage) "Playing • swipe for next" else "Swipe to play", color = Color.White.copy(alpha = 0.85f), fontSize = 13.sp)
         }
 
-        // Right action column (like TikTok/Reels)
+        // Right action column (like Reels)
         Column(
             modifier = Modifier.align(Alignment.CenterEnd).padding(end = 12.dp, bottom = 60.dp),
             horizontalAlignment = Alignment.CenterHorizontally,

@@ -159,7 +159,7 @@ fun AddContentScreen(
                 Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = cs.surfaceContainer)) {
                     Column(Modifier.padding(16.dp)) {
                         Text("From Link — Plays Inside Social Kids", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = cs.onSurface)
-                        Text("Paste any direct video (mp4, m3u8, webm) or image (jpg, png) link — it will play 100% in-app via our player (no YouTube/TikTok redirect). YouTube/TikTok/Facebook links still work via embed.", fontSize = 13.sp, color = cs.onSurfaceVariant)
+                        Text("Paste any direct video (mp4, m3u8, webm) or image (jpg, png) link — it will play 100% in-app via our player. YouTube links play via the official embedded player, always inside the app.", fontSize = 13.sp, color = cs.onSurfaceVariant)
                         Spacer(Modifier.height(12.dp))
                         OutlinedTextField(
                             value = link,

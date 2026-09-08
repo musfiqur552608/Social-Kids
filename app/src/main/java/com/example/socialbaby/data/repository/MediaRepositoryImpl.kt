@@ -39,7 +39,7 @@ class MediaRepositoryImpl @Inject constructor(
 
     override fun pagingShorts(): Flow<PagingData<MediaItem>> {
         return Pager(PagingConfig(pageSize = 20, enablePlaceholders = false)) {
-            dao.pagingByTypes(listOf(MediaType.YOUTUBE_LINK.name, MediaType.TIKTOK_LINK.name, MediaType.LOCAL_VIDEO.name, MediaType.ONLINE_VIDEO.name, MediaType.GENERIC_LINK.name))
+            dao.pagingByTypes(listOf(MediaType.YOUTUBE_LINK.name, MediaType.LOCAL_VIDEO.name, MediaType.ONLINE_VIDEO.name, MediaType.GENERIC_LINK.name))
         }.flow.map { pagingData -> pagingData.map { it.toDomain() } }
     }
 

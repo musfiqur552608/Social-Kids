@@ -148,8 +148,6 @@ private fun MediaItem.copyWith(title: String, shelfId: Long?): MediaItem = when 
     is MediaItem.LocalVideo -> copy(title = title, shelfId = shelfId)
     is MediaItem.LocalImage -> copy(title = title, shelfId = shelfId)
     is MediaItem.YoutubeLink -> copy(title = title, shelfId = shelfId)
-    is MediaItem.TikTokLink -> copy(title = title, shelfId = shelfId)
-    is MediaItem.FacebookLink -> copy(title = title, shelfId = shelfId)
     is MediaItem.OnlineVideo -> copy(title = title, shelfId = shelfId)
     is MediaItem.OnlineImage -> copy(title = title, shelfId = shelfId)
     is MediaItem.GenericLink -> copy(title = title, shelfId = shelfId)
@@ -229,8 +227,6 @@ private fun ParentMediaCard(item: MediaItem, onPreview: () -> Unit, onDelete: ()
                             is MediaItem.OnlineImage -> "IMAGE"
                             is MediaItem.GenericLink -> "WEB"
                             is MediaItem.YoutubeLink -> "YT"
-                            is MediaItem.TikTokLink -> "TK"
-                            is MediaItem.FacebookLink -> "FB"
                         },
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                         fontSize = 9.sp, fontWeight = FontWeight.Bold, color = cs.onPrimary

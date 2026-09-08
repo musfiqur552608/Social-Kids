@@ -13,16 +13,4 @@ interface OEmbedApi {
         @Query("url") videoUrl: String,
         @Query("format") format: String = "json"
     ): OEmbedResponse
-
-    @GET
-    suspend fun getTikTokOEmbed(
-        @Url url: String = "https://www.tiktok.com/oembed",
-        @Query("url") videoUrl: String
-    ): OEmbedResponse
-
-    @GET
-    suspend fun getFacebookOEmbed(
-        @Url url: String = "https://graph.facebook.com/v18.0/oembed_video",
-        @Query("url") videoUrl: String
-    ): OEmbedResponse
 }

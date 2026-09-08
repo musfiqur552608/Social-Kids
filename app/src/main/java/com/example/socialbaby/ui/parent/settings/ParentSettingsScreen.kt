@@ -85,7 +85,7 @@ fun ParentSettingsScreen(
             item {
                 SettingsCard(title = "Features") {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Column { Text("Shorts vertical feed", fontWeight = FontWeight.Bold, color = cs.onSurface); Text("TikTok-like swipe", fontSize = 12.sp, color = cs.onSurfaceVariant) }
+                        Column { Text("Shorts vertical feed", fontWeight = FontWeight.Bold, color = cs.onSurface); Text("Swipe videos vertically", fontSize = 12.sp, color = cs.onSurfaceVariant) }
                         Switch(checked = settings.shortsEnabled, onCheckedChange = { viewModel.setShortsEnabled(it) })
                     }
                     Spacer(Modifier.height(10.dp))
@@ -99,7 +99,7 @@ fun ParentSettingsScreen(
                 Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = cs.surfaceContainer)) {
                     Column(Modifier.padding(16.dp)) {
                         Text("Safety note", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = cs.onSurface)
-                        Text("Direct links use native player; YouTube/TikTok use embed only while watching. No analytics, no ads, no account. Works 100% offline for local media.", fontSize = 12.sp, color = cs.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
+                        Text("Direct links use native player; YouTube uses the official embed only while watching. No analytics, no ads, no account. Works 100% offline for local media.", fontSize = 12.sp, color = cs.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
                     }
                 }
             }

@@ -65,6 +65,15 @@ interface MediaItemDao {
     @Query("UPDATE media_items SET shelfId = :shelfId WHERE id = :id")
     suspend fun moveToShelf(id: Long, shelfId: Long?)
 
+    // One-time cleanup after removing TikTok/Facebook support: drop rows whose
+    // types can never play again. Also drops old YouTube rows with unplayable
+    // IDs (hashcodes from the first parser version — valid IDs are 11 chars).
+    @Query("DELETE FROM media_items WHERE type IN ('TIKTOK_LINK','FACEBOOK_LINK')")
+    suspend fun deleteUnsupportedTypes(): Int
+
+    @Query("DELETE FROM media_items WHERE type = 'YOUTUBE_LINK' AND (platformVideoId IS NULL OR length(platformVideoId) != 11)")
+    suspend fun deleteInvalidYoutubeLinks(): Int
+
     @Query("SELECT COUNT(*) FROM media_items")
     suspend fun count(): Int
 }

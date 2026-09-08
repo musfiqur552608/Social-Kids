@@ -98,7 +98,7 @@ fun LocalVideoPlayer(
                         } catch (_: Exception) { null }
                         val friendly = when {
                             httpCode != null -> "HTTP $httpCode — link returned ${if (httpCode == 404) "404 Not Found" else if (httpCode == 403) "403 Forbidden" else "error $httpCode"}. The URL may have expired, requires login, or is not a direct video file. Try the sample MP4 or re-add as Generic link."
-                            err.errorCode == PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS -> "Network 2004: Bad HTTP status (4xx/5xx). URL may be a web page, not a direct mp4. If it's a YouTube/Facebook link, add it as YouTube/Facebook type (not Online Video). For your own site, ensure the link ends with .mp4 or use Generic Web."
+                            err.errorCode == PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS -> "Network 2004: Bad HTTP status (4xx/5xx). URL may be a web page, not a direct mp4. If it's a YouTube link, add it as YouTube type (not Online Video). For your own site, ensure the link ends with .mp4 or use Generic Web."
                             err.errorCode == PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND -> "File not found — may have been moved or permission lost. Please re-add the video."
                             err.errorCode == PlaybackException.ERROR_CODE_IO_NO_PERMISSION -> "Permission lost — please re-add the video from parent mode."
                             err.errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED ||
@@ -107,7 +107,7 @@ fun LocalVideoPlayer(
                             err.errorCode == PlaybackException.ERROR_CODE_DECODER_QUERY_FAILED -> "Codec not supported on this device."
                             err.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ||
                             err.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT -> "Network error — check internet for online videos."
-                            err.errorCode == 152 || err.errorCode == 153 || err.errorCode == 154 -> "Configuration ${err.errorCode}: container/codec mismatch or HTML page parsed as video. If you pasted a YouTube/Facebook/watch page, add it as YouTube/Facebook/Generic, not Online Video. Try sample MP4."
+                            err.errorCode == 152 || err.errorCode == 153 || err.errorCode == 154 -> "Configuration ${err.errorCode}: container/codec mismatch or HTML page parsed as video. If you pasted a YouTube/watch page, add it as YouTube/Generic, not Online Video. Try sample MP4."
                             else -> null
                         }
                         errorMsg = buildString {

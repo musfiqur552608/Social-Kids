@@ -50,7 +50,7 @@ class AddContentViewModel @Inject constructor(
     fun addLink() {
         val url = _link.value.trim()
         if (!UrlParser.isSupported(url)) {
-            _message.value = "Unsupported link. Use any http(s) video/image link or YouTube/TikTok/Facebook."
+            _message.value = "Unsupported link. TikTok and Facebook links aren't supported — use a YouTube link or a direct video/image link."
             return
         }
         viewModelScope.launch {

@@ -118,7 +118,7 @@ fun HomeScreen(
                 }
             }
 
-            // Quick nav - Shorts / Photos like TikTok style
+            // Quick nav - Shorts / Photos swipe style
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -308,7 +308,7 @@ fun MediaCard(item: MediaItem, onClick: () -> Unit) {
                     Icon(
                         when (item) {
                             is MediaItem.LocalImage -> Icons.Default.Photo
-                            is MediaItem.TikTokLink, is MediaItem.YoutubeLink, is MediaItem.FacebookLink -> Icons.Default.PlayCircle
+                            is MediaItem.YoutubeLink -> Icons.Default.PlayCircle
                             else -> Icons.Default.Movie
                         },
                         contentDescription = null,
@@ -330,8 +330,6 @@ fun MediaCard(item: MediaItem, onClick: () -> Unit) {
                             is MediaItem.OnlineImage -> "PHOTO"
                             is MediaItem.GenericLink -> "WEB"
                             is MediaItem.YoutubeLink -> "YOUTUBE"
-                            is MediaItem.TikTokLink -> "TIKTOK"
-                            is MediaItem.FacebookLink -> "FACEBOOK"
                         },
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, color = cs.onPrimary
@@ -364,7 +362,7 @@ fun MediaCard(item: MediaItem, onClick: () -> Unit) {
                 } else {
                     Text(
                         when (item) {
-                            is MediaItem.LocalVideo, is MediaItem.YoutubeLink, is MediaItem.TikTokLink, is MediaItem.FacebookLink, is MediaItem.OnlineVideo, is MediaItem.GenericLink -> "Tap to play"
+                            is MediaItem.LocalVideo, is MediaItem.YoutubeLink, is MediaItem.OnlineVideo, is MediaItem.GenericLink -> "Tap to play"
                             is MediaItem.LocalImage, is MediaItem.OnlineImage -> "Tap to view"
                         },
                         fontSize = 12.sp, color = cs.onSurfaceVariant

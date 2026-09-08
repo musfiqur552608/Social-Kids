@@ -199,6 +199,14 @@ class MainActivity : ComponentActivity() {
             try {
                 val shelfDao = db.shelfDao()
                 val mediaDao = db.mediaItemDao()
+                // One-time cleanup: TikTok/Facebook support was removed, so drop
+                // rows of those types plus old YouTube rows with unplayable IDs
+                // (valid YouTube IDs are always 11 chars). Runs every launch,
+                // deletes nothing when data is already valid.
+                try {
+                    mediaDao.deleteUnsupportedTypes()
+                    mediaDao.deleteInvalidYoutubeLinks()
+                } catch (_: Exception) {}
                 if (shelfDao.count() == 0) {
                     val longId = shelfDao.insert(ShelfEntity(name = "Long Videos", kind = "SHELF", sortOrder = 0))
                     val shortsId = shelfDao.insert(ShelfEntity(name = "Shorts", kind = "SHORTS_FEED", sortOrder = 1))

@@ -25,20 +25,13 @@ class AddOnlineLinkUseCase @Inject constructor(
             var thumbnailUrl: String? = null
             var thumbnailLocalPath: String? = null
 
-            // Platform-specific oEmbed only for YT/TikTok/FB
+            // Platform-specific oEmbed only for YouTube
             when (parsed.platform) {
-                UrlParser.Platform.YOUTUBE, UrlParser.Platform.TIKTOK, UrlParser.Platform.FACEBOOK -> {
+                UrlParser.Platform.YOUTUBE -> {
                     try {
-                        val resp = when (parsed.platform) {
-                            UrlParser.Platform.YOUTUBE -> oEmbedApi.getYoutubeOEmbed(videoUrl = url)
-                            UrlParser.Platform.TIKTOK -> oEmbedApi.getTikTokOEmbed(videoUrl = url)
-                            UrlParser.Platform.FACEBOOK -> oEmbedApi.getFacebookOEmbed(videoUrl = url)
-                            else -> null
-                        }
-                        if (resp != null) {
-                            title = resp.title ?: title
-                            thumbnailUrl = resp.thumbnail_url
-                        }
+                        val resp = oEmbedApi.getYoutubeOEmbed(videoUrl = url)
+                        title = resp.title ?: title
+                        thumbnailUrl = resp.thumbnail_url
                     } catch (e: Exception) {
                         // keep defaults
                     }
@@ -53,7 +46,7 @@ class AddOnlineLinkUseCase @Inject constructor(
                         } catch (e: Exception) {
                             thumbnailLocalPath = thumbnailUrl
                         }
-                    } else if (parsed.platform == UrlParser.Platform.YOUTUBE) {
+                    } else {
                         thumbnailLocalPath = "https://img.youtube.com/vi/${parsed.videoId}/hqdefault.jpg"
                     }
                 }
@@ -74,8 +67,6 @@ class AddOnlineLinkUseCase @Inject constructor(
 
             val item: MediaItem = when (parsed.platform) {
                 UrlParser.Platform.YOUTUBE -> MediaItem.YoutubeLink(title = title, thumbnailPath = thumbnailLocalPath, shelfId = shelfId, externalUrl = url, platformVideoId = parsed.videoId)
-                UrlParser.Platform.TIKTOK -> MediaItem.TikTokLink(title = title, thumbnailPath = thumbnailLocalPath, shelfId = shelfId, externalUrl = url, platformVideoId = parsed.videoId)
-                UrlParser.Platform.FACEBOOK -> MediaItem.FacebookLink(title = title, thumbnailPath = thumbnailLocalPath, shelfId = shelfId, externalUrl = url, platformVideoId = parsed.videoId)
                 UrlParser.Platform.ONLINE_VIDEO -> MediaItem.OnlineVideo(title = title, thumbnailPath = thumbnailLocalPath, shelfId = shelfId, externalUrl = url)
                 UrlParser.Platform.ONLINE_IMAGE -> MediaItem.OnlineImage(title = title, thumbnailPath = thumbnailLocalPath ?: url, shelfId = shelfId, externalUrl = url)
                 UrlParser.Platform.GENERIC -> MediaItem.GenericLink(title = title, thumbnailPath = thumbnailLocalPath, shelfId = shelfId, externalUrl = url)

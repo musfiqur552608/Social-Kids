@@ -55,36 +55,6 @@ sealed class MediaItem {
         val platformVideoId: String
     ) : MediaItem()
 
-    data class TikTokLink(
-        override val id: Long = 0,
-        override val title: String,
-        override val thumbnailPath: String? = null,
-        override val shelfId: Long? = null,
-        override val sortOrder: Int = 0,
-        override val dateAdded: Long = System.currentTimeMillis(),
-        override val lastWatchedPositionMs: Long = 0,
-        override val lastWatchedAt: Long? = null,
-        override val totalWatchTimeMs: Long = 0,
-        override val isFavorite: Boolean = false,
-        val externalUrl: String,
-        val platformVideoId: String
-    ) : MediaItem()
-
-    data class FacebookLink(
-        override val id: Long = 0,
-        override val title: String,
-        override val thumbnailPath: String? = null,
-        override val shelfId: Long? = null,
-        override val sortOrder: Int = 0,
-        override val dateAdded: Long = System.currentTimeMillis(),
-        override val lastWatchedPositionMs: Long = 0,
-        override val lastWatchedAt: Long? = null,
-        override val totalWatchTimeMs: Long = 0,
-        override val isFavorite: Boolean = false,
-        val externalUrl: String,
-        val platformVideoId: String
-    ) : MediaItem()
-
     // --- Generic platform-agnostic online media (works 100% in-app, no embed) ---
     data class OnlineVideo(
         override val id: Long = 0,
@@ -130,15 +100,13 @@ sealed class MediaItem {
 }
 
 enum class MediaItemType {
-    LOCAL_VIDEO, LOCAL_IMAGE, YOUTUBE_LINK, TIKTOK_LINK, FACEBOOK_LINK, ONLINE_VIDEO, ONLINE_IMAGE, GENERIC_LINK
+    LOCAL_VIDEO, LOCAL_IMAGE, YOUTUBE_LINK, ONLINE_VIDEO, ONLINE_IMAGE, GENERIC_LINK
 }
 
 fun MediaItem.typeName(): String = when (this) {
     is MediaItem.LocalVideo -> "LOCAL_VIDEO"
     is MediaItem.LocalImage -> "LOCAL_IMAGE"
     is MediaItem.YoutubeLink -> "YOUTUBE_LINK"
-    is MediaItem.TikTokLink -> "TIKTOK_LINK"
-    is MediaItem.FacebookLink -> "FACEBOOK_LINK"
     is MediaItem.OnlineVideo -> "ONLINE_VIDEO"
     is MediaItem.OnlineImage -> "ONLINE_IMAGE"
     is MediaItem.GenericLink -> "GENERIC_LINK"

@@ -77,8 +77,6 @@ fun PlayerScreen(
                                 is MediaItem.OnlineImage -> "Online image • in-app"
                                 is MediaItem.GenericLink -> "Web • in-app"
                                 is MediaItem.YoutubeLink -> "YouTube (embed)"
-                                is MediaItem.TikTokLink -> "TikTok (embed)"
-                                is MediaItem.FacebookLink -> "Facebook (embed)"
                             },
                             fontSize = 11.sp, color = cs.onSurfaceVariant
                         )
@@ -156,12 +154,6 @@ fun PlayerScreen(
                 is MediaItem.YoutubeLink -> {
                     // Dedicated YouTube player — reliable, handles 150/153 fallback to WebView
                     YoutubePlayer(videoId = media.platformVideoId, externalUrl = media.externalUrl, modifier = Modifier.fillMaxSize(), autoPlay = true, mute = false, loop = false)
-                }
-                is MediaItem.TikTokLink -> {
-                    EmbeddedLinkPlayer(videoId = media.platformVideoId, platform = "TIKTOK", externalUrl = media.externalUrl, modifier = Modifier.fillMaxSize())
-                }
-                is MediaItem.FacebookLink -> {
-                    EmbeddedLinkPlayer(videoId = media.platformVideoId, platform = "FACEBOOK", externalUrl = media.externalUrl, modifier = Modifier.fillMaxSize())
                 }
                 is MediaItem.GenericLink -> {
                     // Any platform link (your own site) — loads directly in secure WebView, no external app

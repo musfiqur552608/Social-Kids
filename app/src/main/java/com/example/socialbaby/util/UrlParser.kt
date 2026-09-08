@@ -4,7 +4,7 @@ import android.net.Uri
 
 object UrlParser {
 
-    enum class Platform { YOUTUBE, TIKTOK, FACEBOOK, ONLINE_VIDEO, ONLINE_IMAGE, GENERIC }
+    enum class Platform { YOUTUBE, ONLINE_VIDEO, ONLINE_IMAGE, GENERIC }
 
     data class ParsedLink(
         val platform: Platform,
@@ -17,19 +17,6 @@ object UrlParser {
         Regex("""(?:youtube\.com/watch\?v=|youtu\.be/|youtube\.com/embed/|youtube\.com/shorts/)([A-Za-z0-9_-]{6,})"""),
         Regex("""youtube\.com.*[?&]v=([A-Za-z0-9_-]{6,})"""),
         Regex("""youtube\.com.*\/([A-Za-z0-9_-]{11})(?:[?&]|$)""")
-    )
-
-    private val tiktokRegexes = listOf(
-        Regex("""tiktok\.com/.*/video/(\d+)"""),
-        Regex("""vm\.tiktok\.com/([A-Za-z0-9]+)"""),
-        Regex("""tiktok\.com.*\/(\d{10,})""")
-    )
-
-    private val facebookRegexes = listOf(
-        Regex("""facebook\.com/.*/videos/(\d+)"""),
-        Regex("""fb\.watch/([A-Za-z0-9_-]+)"""),
-        Regex("""facebook\.com/watch\/?\?v=(\d+)"""),
-        Regex("""facebook\.com/reel/(\d+)""")
     )
 
     private val videoExtensions = setOf("mp4", "mkv", "webm", "mov", "m3u8", "avi", "mpd")
@@ -55,42 +42,11 @@ object UrlParser {
             // This ensures embed doesn't use bogus id
             // Fall through to generic handling below but keep as ONLINE_VIDEO with full URL for WebView
         }
-        // TikTok
-        for (rx in tiktokRegexes) {
-            val m = rx.find(trimmed)
-            if (m != null) {
-                val id = m.groupValues[1]
-                return ParsedLink(Platform.TIKTOK, id, trimmed, "TikTok Video $id")
-            }
-        }
-        if (trimmed.contains("tiktok.com")) {
-            // Try last numeric segment — TikTok IDs are numeric 10+ digits
-            val lastNum = trimmed.substringAfterLast("/").substringBefore("?").substringBefore("&").substringBefore("#")
-            if (lastNum.matches(Regex("\\d{8,}"))) {
-                return ParsedLink(Platform.TIKTOK, lastNum, trimmed, "TikTok Video $lastNum")
-            }
-            // If not numeric, treat as generic (e.g., tiktok.com/@user/video/...)
-            // Fall through to generic handling so WebView loads the page directly
-        }
-        // Facebook
-        for (rx in facebookRegexes) {
-            val m = rx.find(trimmed)
-            if (m != null) {
-                val id = m.groupValues[1]
-                if (id.matches(Regex("\\d{5,}|[A-Za-z0-9_-]{6,}"))) {
-                    return ParsedLink(Platform.FACEBOOK, id, trimmed, "Facebook Video $id")
-                }
-            }
-        }
-        // Facebook share links like /share/v/xxx or /share/r/xxx are not numeric embed IDs — treat as GENERIC web
-        // Only create FACEBOOK link if we have a clear numeric video id, otherwise fall through to GENERIC
-        if (trimmed.contains("facebook.com") || trimmed.contains("fb.watch")) {
-            // Try to extract numeric video id from URL
-            val numericId = Regex("""(\d{8,})""").find(trimmed)?.groupValues?.get(1)
-            if (numericId != null) {
-                return ParsedLink(Platform.FACEBOOK, numericId, trimmed, "Facebook Video $numericId")
-            }
-            // No numeric id — treat as GENERIC so WebView loads the actual share page
+        // TikTok and Facebook are not supported — reject explicitly with a
+        // clear message instead of mis-parsing them as generic web links.
+        val lowerHost = trimmed.lowercase()
+        if (lowerHost.contains("tiktok.com") || lowerHost.contains("facebook.com") || lowerHost.contains("fb.watch")) {
+            return null
         }
 
         // Direct media detection - platform-agnostic, plays 100% in-app

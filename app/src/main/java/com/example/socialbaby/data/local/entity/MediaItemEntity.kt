@@ -38,8 +38,6 @@ enum class MediaType {
     LOCAL_VIDEO,
     LOCAL_IMAGE,
     YOUTUBE_LINK,
-    TIKTOK_LINK,
-    FACEBOOK_LINK,
     ONLINE_VIDEO,
     ONLINE_IMAGE,
     GENERIC_LINK
