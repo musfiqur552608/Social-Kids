@@ -4,7 +4,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -72,13 +74,13 @@ fun ParentDashboardScreen(
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text("Quick Actions", fontWeight = FontWeight.Bold, color = cs.onSurface, fontSize = 13.sp)
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        ActionButton("Add Content", Icons.Default.AddCircle, cs.primary, cs.onPrimary, Modifier.weight(1f), onNavigateToAdd)
-                        ActionButton("Record", Icons.Default.Videocam, cs.secondary, cs.onSecondary, Modifier.weight(1f), onNavigateToAdd)
+                        ActionTile("Add Content", Icons.Default.AddCircle, cs.primary, cs.onPrimary, Modifier.weight(1f), onNavigateToAdd)
+                        ActionTile("Record", Icons.Default.Videocam, cs.secondary, cs.onSecondary, Modifier.weight(1f), onNavigateToAdd)
                     }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        ActionButton("Shelves", Icons.Default.FolderSpecial, cs.secondaryContainer, cs.onSecondaryContainer, Modifier.weight(1f), onNavigateToShelf)
-                        ActionButton("Settings", Icons.Default.Tune, cs.surfaceVariant, cs.onSurfaceVariant, Modifier.weight(1f), onNavigateToSettings)
-                        ActionButton("History", Icons.Default.History, cs.tertiaryContainer, cs.onTertiaryContainer, Modifier.weight(1f), onNavigateToHistory)
+                        ActionTile("Shelves", Icons.Default.FolderSpecial, cs.secondaryContainer, cs.onSecondaryContainer, Modifier.weight(1f), onNavigateToShelf)
+                        ActionTile("Settings", Icons.Default.Tune, cs.surfaceVariant, cs.onSurfaceVariant, Modifier.weight(1f), onNavigateToSettings)
+                        ActionTile("History", Icons.Default.History, cs.tertiaryContainer, cs.onTertiaryContainer, Modifier.weight(1f), onNavigateToHistory)
                     }
                 }
             }
@@ -166,16 +168,45 @@ private fun StatCard(title: String, subtitle: String, modifier: Modifier, contai
 }
 
 @Composable
-private fun ActionButton(title: String, icon: ImageVector, container: Color, content: Color, modifier: Modifier, onClick: () -> Unit) {
-    FilledTonalButton(
+private fun ActionTile(title: String, icon: ImageVector, container: Color, content: Color, modifier: Modifier, onClick: () -> Unit) {
+    Card(
         onClick = onClick,
-        modifier = modifier.height(52.dp),
-        shape = RoundedCornerShape(14.dp),
-        colors = ButtonDefaults.filledTonalButtonColors(containerColor = container, contentColor = content)
+        modifier = modifier.height(96.dp),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = container, contentColor = content),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
     ) {
-        Icon(icon, null, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(6.dp))
-        Text(title, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1)
+        Box(Modifier.fillMaxSize()) {
+            // Glossy sheen so tiles look rich on any theme color, light or dark.
+            Box(
+                Modifier.fillMaxSize().background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color.White.copy(alpha = 0.16f),
+                            Color.Transparent,
+                            Color.Black.copy(alpha = 0.07f)
+                        )
+                    )
+                )
+            )
+            Column(
+                Modifier.fillMaxSize().padding(horizontal = 6.dp, vertical = 10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(CircleShape)
+                        .background(content.copy(alpha = 0.20f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(icon, null, tint = content, modifier = Modifier.size(22.dp))
+                }
+                Spacer(Modifier.height(6.dp))
+                Text(title, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = content, maxLines = 1)
+            }
+        }
     }
 }
 
