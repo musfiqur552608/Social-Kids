@@ -12,12 +12,17 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -387,6 +392,36 @@ fun EmbeddedLinkPlayer(
                 }
             }
         )
+
+        // YOUTUBE_FULL: swallow taps on YouTube's own chrome (top logo/search/
+        // menu bar + right action rail) so a child can never tap out to YouTube.
+        // Transparent native overlays sit above the WebView but below our own
+        // loading/error UIs and the app's buttons (drawn later, on top).
+        // Navigation blocking in shouldOverrideUrlLoading remains as second layer.
+        if (platform == "YOUTUBE_FULL") {
+            // Top bar: YouTube logo + search + overflow menu.
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .height(64.dp)
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() }
+                    ) { }
+            )
+            // Right action rail: like / comments / share / sound buttons.
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .fillMaxHeight()
+                    .width(64.dp)
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() }
+                    ) { }
+            )
+        }
 
         // Handle Shorts swipe: ensure always unmuted when current — use coroutine delay (fixes Handler)
         LaunchedEffect(isCurrentPage, isMuted) {
