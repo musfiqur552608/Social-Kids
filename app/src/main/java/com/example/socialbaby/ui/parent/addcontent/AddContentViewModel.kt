@@ -80,4 +80,6 @@ class AddContentViewModel @Inject constructor(
     }
 
     fun clearMessage() { _message.value = null }
+
+    fun showMessage(text: String) { _message.value = text }
 }

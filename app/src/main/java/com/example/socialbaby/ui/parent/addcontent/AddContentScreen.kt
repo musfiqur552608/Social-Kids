@@ -1,9 +1,13 @@
 package com.example.socialbaby.ui.parent.addcontent
 
+import android.Manifest
 import android.app.Activity
+import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.MediaStore
+import androidx.core.content.ContextCompat
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -48,11 +52,26 @@ fun AddContentScreen(
     }
 
     val context = androidx.compose.ui.platform.LocalContext.current
+    // Returns true if some app on this device can handle the intent.
+    // Without this check, launching capture with no camera app crashes the app.
+    fun canHandle(intent: Intent): Boolean {
+        return try {
+            context.packageManager
+                .resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY) != null
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     // --- Easier record options: capture video/photo directly ---
     val captureVideoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { res ->
         if (res.resultCode == Activity.RESULT_OK) {
             val uri = res.data?.data
-            if (uri != null) viewModel.addLocalUri(uri, "video/*")
+            if (uri != null) {
+                viewModel.addLocalUri(uri, "video/*")
+            } else {
+                viewModel.showMessage("Capture didn't return a video — try again or use Pick Video")
+            }
         }
     }
     val capturePhotoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { res ->
@@ -72,6 +91,66 @@ fun AddContentScreen(
                         viewModel.addLocalUri(fileUri, "image/*")
                     } catch (e: Exception) { }
                 }
+            }
+        }
+    }
+
+    fun launchCapture(intent: Intent, noCameraMsg: String) {
+        if (!canHandle(intent)) {
+            viewModel.showMessage(noCameraMsg)
+            return
+        }
+        try {
+            if (intent.action == MediaStore.ACTION_VIDEO_CAPTURE) {
+                captureVideoLauncher.launch(intent)
+            } else {
+                capturePhotoLauncher.launch(intent)
+            }
+        } catch (e: ActivityNotFoundException) {
+            viewModel.showMessage(noCameraMsg)
+        } catch (e: SecurityException) {
+            viewModel.showMessage("Camera was blocked — please allow it and try again")
+        }
+    }
+
+    // Asks for CAMERA permission first, then runs capture. Remembers which
+    // button was pressed so the capture starts right after the user grants it.
+    var pendingCapture by remember { mutableStateOf<String?>(null) }
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        val pending = pendingCapture
+        pendingCapture = null
+        if (granted) {
+            if (pending == "video") {
+                launchCapture(
+                    Intent(MediaStore.ACTION_VIDEO_CAPTURE),
+                    "No camera app found — use Pick Video instead"
+                )
+            } else if (pending == "photo") {
+                launchCapture(
+                    Intent(MediaStore.ACTION_IMAGE_CAPTURE),
+                    "No camera app found — use Pick Image instead"
+                )
+            }
+        } else {
+            viewModel.showMessage("Camera permission is needed to record — or use Pick instead")
+        }
+    }
+
+    fun requestCameraAndCapture(kind: String, intent: Intent, noCameraMsg: String) {
+        val granted = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.CAMERA
+        ) == PackageManager.PERMISSION_GRANTED
+        if (granted) {
+            launchCapture(intent, noCameraMsg)
+        } else {
+            pendingCapture = kind
+            try {
+                permissionLauncher.launch(Manifest.permission.CAMERA)
+            } catch (e: Exception) {
+                pendingCapture = null
+                viewModel.showMessage("Camera permission is needed to record — or use Pick instead")
             }
         }
     }
@@ -105,8 +184,11 @@ fun AddContentScreen(
                             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                                 Button(
                                     onClick = {
-                                        val intent = Intent(MediaStore.ACTION_VIDEO_CAPTURE)
-                                        captureVideoLauncher.launch(intent)
+                                        requestCameraAndCapture(
+                                            "video",
+                                            Intent(MediaStore.ACTION_VIDEO_CAPTURE),
+                                            "No camera app found — use Pick Video instead"
+                                        )
                                     },
                                     modifier = Modifier.weight(1f).height(56.dp),
                                     shape = RoundedCornerShape(16.dp),
@@ -119,8 +201,11 @@ fun AddContentScreen(
                                 }
                                 Button(
                                     onClick = {
-                                        val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-                                        capturePhotoLauncher.launch(intent)
+                                        requestCameraAndCapture(
+                                            "photo",
+                                            Intent(MediaStore.ACTION_IMAGE_CAPTURE),
+                                            "No camera app found — use Pick Image instead"
+                                        )
                                     },
                                     modifier = Modifier.weight(1f).height(56.dp),
                                     shape = RoundedCornerShape(16.dp),
