@@ -27,6 +27,11 @@ class ShortsFeedViewModel @Inject constructor(
     private var lastBase: List<MediaItem> = emptyList()
     private var lastIds: Set<Long> = emptySet()
 
+    private val _query = MutableStateFlow("")
+    val query: StateFlow<String> = _query.asStateFlow()
+
+    fun setQuery(q: String) { _query.value = q }
+
     init {
         viewModelScope.launch {
             mediaRepo.observeShorts().collect { base -> mergeBase(base) }

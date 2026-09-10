@@ -59,6 +59,12 @@ interface MediaItemDao {
     @Query("SELECT * FROM media_items WHERE type IN (:types) ORDER BY dateAdded DESC")
     fun pagingByTypes(types: List<String>): PagingSource<Int, MediaItemEntity>
 
+    @Query("SELECT * FROM media_items WHERE title LIKE '%' || :query || '%' ESCAPE '\\' ORDER BY dateAdded DESC")
+    fun pagingSearch(query: String): PagingSource<Int, MediaItemEntity>
+
+    @Query("SELECT * FROM media_items WHERE shelfId = :shelfId AND title LIKE '%' || :query || '%' ESCAPE '\\' ORDER BY sortOrder ASC, dateAdded DESC")
+    fun pagingSearchInShelf(query: String, shelfId: Long): PagingSource<Int, MediaItemEntity>
+
     @Query("UPDATE media_items SET lastWatchedPositionMs = :position, lastWatchedAt = :at, totalWatchTimeMs = totalWatchTimeMs + :delta WHERE id = :id")
     suspend fun updateWatchProgress(id: Long, position: Long, at: Long, delta: Long)
 

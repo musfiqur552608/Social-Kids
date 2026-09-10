@@ -46,6 +46,14 @@ class MediaRepositoryImpl @Inject constructor(
     override fun observeShorts(): Flow<List<MediaItem>> =
         dao.observeByTypes(shortsTypes()).map { list -> list.map { it.toDomain() } }
 
+    override fun pagingSearch(query: String, shelfId: Long?): Flow<PagingData<MediaItem>> {
+        // Escape LIKE wildcards so typed % _ \ match literally.
+        val q = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        return Pager(PagingConfig(pageSize = 20, enablePlaceholders = false)) {
+            if (shelfId == null) dao.pagingSearch(q) else dao.pagingSearchInShelf(q, shelfId)
+        }.flow.map { pagingData -> pagingData.map { it.toDomain() } }
+    }
+
     private fun shortsTypes() = listOf(
         MediaType.YOUTUBE_LINK.name,
         MediaType.LOCAL_VIDEO.name,

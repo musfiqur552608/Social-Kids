@@ -13,6 +13,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import javax.inject.Inject
 
@@ -31,8 +32,19 @@ class HomeViewModel @Inject constructor(
 
     val selectedShelfId: StateFlow<Long?> = selectedShelf
 
-    val pagedMedia: Flow<PagingData<MediaItem>> = selectedShelf.flatMapLatest { shelfId ->
-        if (shelfId == null) mediaRepo.pagingAll() else mediaRepo.pagingByShelf(shelfId)
+    private val _query = MutableStateFlow("")
+    val query: StateFlow<String> = _query
+
+    fun setQuery(q: String) { _query.value = q }
+
+    val pagedMedia: Flow<PagingData<MediaItem>> = combine(selectedShelf, _query) { shelfId, q ->
+        shelfId to q.trim()
+    }.flatMapLatest { (shelfId, q) ->
+        if (q.isEmpty()) {
+            if (shelfId == null) mediaRepo.pagingAll() else mediaRepo.pagingByShelf(shelfId)
+        } else {
+            mediaRepo.pagingSearch(q, shelfId)
+        }
     }.cachedIn(viewModelScope)
 
     // For grid without paging fallback (simple list)

@@ -9,8 +9,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.*
@@ -42,7 +44,14 @@ fun ShortsFeedScreen(
 ) {
     BackHandler { onNavigateBack() }
     val order by viewModel.order.collectAsState()
-    val size = order.size
+    val q by viewModel.query.collectAsState()
+    var searching by remember { mutableStateOf(false) }
+    // Search filters the shuffled order by title; blank query = full loop.
+    val display = remember(order, q) {
+        if (q.isBlank()) order
+        else order.filter { it.title.contains(q.trim(), ignoreCase = true) }
+    }
+    val size = display.size
     // Virtually endless pager: page N shows order[N % size], so the feed never
     // ends — swiping past the last video loops back to the start seamlessly.
     val pagerState = rememberPagerState(pageCount = { if (size == 0) 1 else Int.MAX_VALUE })
@@ -58,15 +67,23 @@ fun ShortsFeedScreen(
         }
     }
 
+    // New search text → jump back to the top of the (re)filtered results.
+    LaunchedEffect(q) {
+        if (size > 0 && centered) {
+            pagerState.scrollToPage((Int.MAX_VALUE / 2) - ((Int.MAX_VALUE / 2) % size))
+        }
+    }
+
     // New lap (crossed a size boundary in either direction) → fresh random
     // order for the coming videos, current video stays put (anchored in VM).
     // The first emission is just the entry position — only reshuffle on change.
     val lapIndex = if (size > 1) pagerState.currentPage / size else 0
     var lastLap by remember { mutableStateOf<Int?>(null) }
     LaunchedEffect(lapIndex) {
-        if (size > 1 && lastLap != null && lapIndex != lastLap) {
+        // No reshuffle while searching — laps just loop the filtered results.
+        if (size > 1 && q.isBlank() && lastLap != null && lapIndex != lastLap) {
             val slot = pagerState.currentPage % size
-            order.getOrNull(slot)?.let { viewModel.onLapCompleted(it.id, slot) }
+            display.getOrNull(slot)?.let { viewModel.onLapCompleted(it.id, slot) }
         }
         lastLap = lapIndex
     }
@@ -74,11 +91,48 @@ fun ShortsFeedScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Shorts", fontWeight = FontWeight.ExtraBold) },
+                title = {
+                    if (searching) {
+                        TextField(
+                            value = q,
+                            onValueChange = { viewModel.setQuery(it) },
+                            placeholder = { Text("Search shorts...", color = Color.White.copy(alpha = 0.5f)) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                cursorColor = KidYellow,
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent
+                            )
+                        )
+                    } else {
+                        Text("Shorts", fontWeight = FontWeight.ExtraBold)
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) { Icon(Icons.Default.ArrowBack, null) }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Black, titleContentColor = Color.White, navigationIconContentColor = Color.White)
+                actions = {
+                    IconButton(onClick = {
+                        if (searching) {
+                            searching = false
+                            viewModel.setQuery("")
+                        } else {
+                            searching = true
+                        }
+                    }) {
+                        Icon(
+                            if (searching) Icons.Default.Close else Icons.Default.Search,
+                            contentDescription = if (searching) "Close search" else "Search",
+                            tint = Color.White
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Black, titleContentColor = Color.White, navigationIconContentColor = Color.White, actionIconContentColor = Color.White)
             )
         },
         containerColor = Color.Black
@@ -91,13 +145,26 @@ fun ShortsFeedScreen(
                         Text("Ask parent to add videos", color = Color.White.copy(alpha = 0.7f))
                     }
                 }
+            } else if (display.isEmpty()) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(24.dp)) {
+                        Icon(Icons.Default.Search, null, tint = Color.White.copy(alpha = 0.5f), modifier = Modifier.size(48.dp))
+                        Spacer(Modifier.height(8.dp))
+                        Text("No matches for \"$q\"", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Spacer(Modifier.height(12.dp))
+                        OutlinedButton(
+                            onClick = { searching = false; viewModel.setQuery("") },
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                        ) { Text("Clear search") }
+                    }
+                }
             } else {
                 VerticalPager(state = pagerState, modifier = Modifier.fillMaxSize(), beyondViewportPageCount = 1) { idx ->
                     // Endless loop: wrap the page index into the shuffled order.
-                    // (pageCount is Int.MAX_VALUE while order is non-empty, and
-                    // order only changes via anchored reshuffles, so idx % size
-                    // is always valid here.)
-                    val item = order[idx % size]
+                    // (pageCount is Int.MAX_VALUE while display is non-empty, and
+                    // display only changes via anchored reshuffles or search text,
+                    // so idx % size is always valid here.)
+                    val item = display[idx % size]
                     // Only settled page plays and only one player alive (no overlap, fixes previous sound after tap)
                     val isCurrent = pagerState.currentPage == idx
                     if (centered) {

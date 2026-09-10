@@ -9,11 +9,13 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -43,6 +45,7 @@ fun HomeScreen(
     val cs = MaterialTheme.colorScheme
     val shelves by viewModel.shelves.collectAsState(initial = emptyList())
     val selectedId by viewModel.selectedShelfId.collectAsState()
+    val query by viewModel.query.collectAsState()
     val paging = viewModel.pagedMedia.collectAsLazyPagingItems()
 
     Scaffold(
@@ -143,6 +146,24 @@ fun HomeScreen(
                 )
             }
 
+            // Search bar - filters by title within All or the selected shelf
+            OutlinedTextField(
+                value = query,
+                onValueChange = { viewModel.setQuery(it) },
+                placeholder = { Text("Search videos...") },
+                leadingIcon = { Icon(Icons.Default.Search, null, tint = cs.onSurfaceVariant) },
+                trailingIcon = {
+                    if (query.isNotEmpty()) {
+                        IconButton(onClick = { viewModel.setQuery("") }) {
+                            Icon(Icons.Default.Clear, null, tint = cs.onSurfaceVariant)
+                        }
+                    }
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(20.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
+            )
+
             // Shelf chips - FIXED FILTERING
             LazyRow(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
@@ -173,6 +194,23 @@ fun HomeScreen(
                 }
             }
 
+            // Search result header
+            if (query.isNotBlank() && paging.loadState.refresh !is androidx.paging.LoadState.Loading) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        "${paging.itemCount} result${if (paging.itemCount == 1) "" else "s"} for \"$query\"",
+                        fontWeight = FontWeight.Bold, fontSize = 14.sp, color = cs.onSurface
+                    )
+                    TextButton(onClick = { viewModel.setQuery("") }) {
+                        Text("Clear", fontWeight = FontWeight.Bold, color = cs.primary)
+                    }
+                }
+            }
+
             // Content grid - responsive (adaptive) for all mobile screens: phones 2-col, tablets 3-4, foldables adaptive
             when {
                 paging.itemCount > 0 -> {
@@ -198,6 +236,24 @@ fun HomeScreen(
                 paging.loadState.refresh is androidx.paging.LoadState.Loading -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(color = cs.primary)
+                    }
+                }
+                query.isNotBlank() -> {
+                    // search found nothing
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(24.dp)) {
+                            Icon(Icons.Default.Search, null, modifier = Modifier.size(64.dp), tint = cs.outline)
+                            Spacer(Modifier.height(12.dp))
+                            Text("No results", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = cs.onBackground)
+                            Text(
+                                "Nothing matches \"$query\". Try another word.",
+                                color = cs.onSurfaceVariant,
+                                fontSize = 14.sp,
+                                modifier = Modifier.padding(top = 6.dp)
+                            )
+                            Spacer(Modifier.height(16.dp))
+                            OutlinedButton(onClick = { viewModel.setQuery("") }) { Text("Clear search") }
+                        }
                     }
                 }
                 selectedId != null -> {
