@@ -11,6 +11,8 @@ interface MediaRepository {
     fun pagingByShelf(shelfId: Long): Flow<PagingData<MediaItem>>
     fun pagingByType(type: String): Flow<PagingData<MediaItem>>
     fun pagingShorts(): Flow<PagingData<MediaItem>>
+    /** Same filter as pagingShorts but as a plain list flow (for infinite-loop Shorts). */
+    fun observeShorts(): Flow<List<MediaItem>>
     fun pagingPhotos(): Flow<PagingData<MediaItem>>
     suspend fun getById(id: Long): MediaItem?
     fun observeById(id: Long): Flow<MediaItem?>

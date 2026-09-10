@@ -63,7 +63,9 @@ fun LocalVideoPlayer(
             .setUserAgent("Mozilla/5.0 (Linux; Android 13; SocialKids) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36")
             .setConnectTimeoutMs(15000)
             .setReadTimeoutMs(15000)
-        val dataSourceFactory = DefaultDataSource.Factory(context, httpFactory)
+        val upstream = DefaultDataSource.Factory(context, httpFactory)
+        // Disk cache: repeat plays of direct links start instantly from storage.
+        val dataSourceFactory = com.example.socialbaby.data.local.VideoCacheManager.cachedFactory(context, upstream)
         val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
         ExoPlayer.Builder(context)
             .setMediaSourceFactory(mediaSourceFactory)

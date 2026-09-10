@@ -25,7 +25,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.paging.compose.collectAsLazyPagingItems
 import coil.compose.AsyncImage
 import com.example.socialbaby.domain.model.MediaItem
 import com.example.socialbaby.ui.child.player.EmbeddedLinkPlayer
@@ -42,10 +41,35 @@ fun ShortsFeedScreen(
     onNavigateToPlayer: (Long) -> Unit
 ) {
     BackHandler { onNavigateBack() }
-    val shorts = viewModel.shorts.collectAsLazyPagingItems()
-    val pagerState = rememberPagerState(pageCount = { shorts.itemCount.coerceAtLeast(1) })
+    val order by viewModel.order.collectAsState()
+    val size = order.size
+    // Virtually endless pager: page N shows order[N % size], so the feed never
+    // ends — swiping past the last video loops back to the start seamlessly.
+    val pagerState = rememberPagerState(pageCount = { if (size == 0) 1 else Int.MAX_VALUE })
     // Global unmute for Shorts — fixes "unmute all then next paused, tap to start" (per-page muted caused next to be muted/paused)
     var globalMuted by remember { mutableStateOf(false) } // false = always unmuted as requested
+
+    // Start mid-range so the child can also swipe UP endlessly, not just down.
+    var centered by remember { mutableStateOf(false) }
+    LaunchedEffect(size) {
+        if (size > 0 && !centered) {
+            centered = true
+            pagerState.scrollToPage((Int.MAX_VALUE / 2) - ((Int.MAX_VALUE / 2) % size))
+        }
+    }
+
+    // New lap (crossed a size boundary in either direction) → fresh random
+    // order for the coming videos, current video stays put (anchored in VM).
+    // The first emission is just the entry position — only reshuffle on change.
+    val lapIndex = if (size > 1) pagerState.currentPage / size else 0
+    var lastLap by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(lapIndex) {
+        if (size > 1 && lastLap != null && lapIndex != lastLap) {
+            val slot = pagerState.currentPage % size
+            order.getOrNull(slot)?.let { viewModel.onLapCompleted(it.id, slot) }
+        }
+        lastLap = lapIndex
+    }
 
     Scaffold(
         topBar = {
@@ -60,7 +84,7 @@ fun ShortsFeedScreen(
         containerColor = Color.Black
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize().background(Color.Black)) {
-            if (shorts.itemCount == 0) {
+            if (order.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("No shorts yet", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
@@ -68,11 +92,15 @@ fun ShortsFeedScreen(
                     }
                 }
             } else {
-                VerticalPager(state = pagerState, modifier = Modifier.fillMaxSize(), beyondViewportPageCount = 0) { idx ->
-                    val item = shorts[idx]
+                VerticalPager(state = pagerState, modifier = Modifier.fillMaxSize(), beyondViewportPageCount = 1) { idx ->
+                    // Endless loop: wrap the page index into the shuffled order.
+                    // (pageCount is Int.MAX_VALUE while order is non-empty, and
+                    // order only changes via anchored reshuffles, so idx % size
+                    // is always valid here.)
+                    val item = order[idx % size]
                     // Only settled page plays and only one player alive (no overlap, fixes previous sound after tap)
                     val isCurrent = pagerState.currentPage == idx
-                    if (item != null) {
+                    if (centered) {
                         ShortsInlinePage(
                             item = item,
                             isCurrentPage = isCurrent,
@@ -92,13 +120,14 @@ fun ShortsFeedScreen(
                     modifier = Modifier.align(Alignment.CenterEnd).padding(end = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    repeat(shorts.itemCount.coerceAtMost(8)) { i ->
+                    repeat(size.coerceAtMost(8)) { i ->
+                        val active = size > 0 && (pagerState.currentPage % size) == i
                         Box(
                             modifier = Modifier
                                 .width(4.dp)
-                                .height(if (pagerState.currentPage == i) 20.dp else 8.dp)
+                                .height(if (active) 20.dp else 8.dp)
                                 .clip(RoundedCornerShape(2.dp))
-                                .background(if (pagerState.currentPage == i) KidYellow else Color.White.copy(alpha = 0.4f))
+                                .background(if (active) KidYellow else Color.White.copy(alpha = 0.4f))
                         )
                     }
                 }

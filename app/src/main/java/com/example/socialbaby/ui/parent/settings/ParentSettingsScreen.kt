@@ -5,6 +5,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,6 +23,7 @@ fun ParentSettingsScreen(
     onBack: () -> Unit
 ) {
     val settings by viewModel.settings.collectAsState()
+    val videoCacheSize by viewModel.videoCacheSize.collectAsState()
     val cs = MaterialTheme.colorScheme
 
     Scaffold(
@@ -92,6 +95,28 @@ fun ParentSettingsScreen(
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Column { Text("Online Links", fontWeight = FontWeight.Bold, color = cs.onSurface); Text("If off, only local videos work (100% offline)", fontSize = 12.sp, color = cs.onSurfaceVariant) }
                         Switch(checked = settings.onlineLinksEnabled, onCheckedChange = { viewModel.setOnlineEnabled(it) })
+                    }
+                }
+            }
+            item {
+                SettingsCard(title = "Video Cache") {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Storage, null, tint = cs.onSurfaceVariant, modifier = Modifier.size(28.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("Disk cache for direct-link videos", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = cs.onSurface)
+                            Text("Repeat plays start instantly from storage", fontSize = 12.sp, color = cs.onSurfaceVariant)
+                            Text(videoCacheSize, fontSize = 12.sp, color = cs.outline, modifier = Modifier.padding(top = 2.dp))
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        TextButton(
+                            onClick = { viewModel.clearVideoCache(); viewModel.refreshCacheSize() },
+                            colors = ButtonDefaults.textButtonColors(contentColor = cs.error)
+                        ) {
+                            Icon(Icons.Default.Delete, null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Clear", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
                     }
                 }
             }

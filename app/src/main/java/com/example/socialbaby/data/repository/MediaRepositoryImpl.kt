@@ -39,9 +39,19 @@ class MediaRepositoryImpl @Inject constructor(
 
     override fun pagingShorts(): Flow<PagingData<MediaItem>> {
         return Pager(PagingConfig(pageSize = 20, enablePlaceholders = false)) {
-            dao.pagingByTypes(listOf(MediaType.YOUTUBE_LINK.name, MediaType.LOCAL_VIDEO.name, MediaType.ONLINE_VIDEO.name, MediaType.GENERIC_LINK.name))
+            dao.pagingByTypes(shortsTypes())
         }.flow.map { pagingData -> pagingData.map { it.toDomain() } }
     }
+
+    override fun observeShorts(): Flow<List<MediaItem>> =
+        dao.observeByTypes(shortsTypes()).map { list -> list.map { it.toDomain() } }
+
+    private fun shortsTypes() = listOf(
+        MediaType.YOUTUBE_LINK.name,
+        MediaType.LOCAL_VIDEO.name,
+        MediaType.ONLINE_VIDEO.name,
+        MediaType.GENERIC_LINK.name
+    )
 
     override fun pagingPhotos(): Flow<PagingData<MediaItem>> = Pager(PagingConfig(pageSize = 20, enablePlaceholders = false)) {
         dao.pagingByTypes(listOf(MediaType.LOCAL_IMAGE.name, MediaType.ONLINE_IMAGE.name))

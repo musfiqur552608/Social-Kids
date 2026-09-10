@@ -40,6 +40,9 @@ interface MediaItemDao {
     @Query("SELECT * FROM media_items WHERE shelfId = :shelfId ORDER BY sortOrder ASC, dateAdded DESC")
     fun observeByShelf(shelfId: Long): Flow<List<MediaItemEntity>>
 
+    @Query("SELECT * FROM media_items WHERE type IN (:types) ORDER BY dateAdded DESC")
+    fun observeByTypes(types: List<String>): Flow<List<MediaItemEntity>>
+
     // Paging sources
     @Query("SELECT * FROM media_items ORDER BY dateAdded DESC")
     fun pagingAll(): PagingSource<Int, MediaItemEntity>
