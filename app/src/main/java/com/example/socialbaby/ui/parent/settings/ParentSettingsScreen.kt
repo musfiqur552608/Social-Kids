@@ -5,16 +5,24 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Restore
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -24,8 +32,23 @@ fun ParentSettingsScreen(
 ) {
     val settings by viewModel.settings.collectAsState()
     val videoCacheSize by viewModel.videoCacheSize.collectAsState()
+    val backupStatus by viewModel.backupStatus.collectAsState()
     val cs = MaterialTheme.colorScheme
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var stagedCsv by remember { mutableStateOf<String?>(null) }
 
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/csv")
+    ) { uri ->
+        if (uri != null && stagedCsv != null) viewModel.writeBackupTo(uri, stagedCsv!!)
+        stagedCsv = null
+    }
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) viewModel.importBackupFrom(uri)
+    }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -117,6 +140,70 @@ fun ParentSettingsScreen(
                             Spacer(Modifier.width(4.dp))
                             Text("Clear", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
+                    }
+                }
+            }
+            item {
+                SettingsCard(title = "Backup & Restore") {
+                    Text(
+                        "Catalog of added content as CSV (opens in Excel/Sheets). Shelves are matched by name on import.",
+                        fontSize = 13.sp, color = cs.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        FilledTonalButton(
+                            onClick = {
+                                scope.launch {
+                                    val csv = viewModel.buildBackupCsv()
+                                    if (csv != null) {
+                                        stagedCsv = csv
+                                        exportLauncher.launch(viewModel.backupFileName())
+                                    }
+                                }
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Default.Save, null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Export", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                        FilledTonalButton(
+                            onClick = {
+                                scope.launch {
+                                    val csv = viewModel.buildBackupCsv()
+                                    if (csv != null) {
+                                        val uri = viewModel.prepareShareUri(csv)
+                                        if (uri != null) {
+                                            val send = Intent(Intent.ACTION_SEND).apply {
+                                                type = "text/csv"
+                                                putExtra(Intent.EXTRA_STREAM, uri)
+                                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                            }
+                                            context.startActivity(Intent.createChooser(send, "Save to Drive"))
+                                        }
+                                    }
+                                }
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Default.CloudUpload, null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Drive", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                        FilledTonalButton(
+                            onClick = {
+                                importLauncher.launch(arrayOf("text/csv", "text/*", "application/vnd.ms-excel"))
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Default.Restore, null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Import", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                    if (backupStatus != null) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(backupStatus!!, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = cs.primary)
                     }
                 }
             }
