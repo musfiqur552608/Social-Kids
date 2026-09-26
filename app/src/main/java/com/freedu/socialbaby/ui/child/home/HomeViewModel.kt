@@ -1,0 +1,52 @@
+package com.freedu.socialbaby.ui.child.home
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
+import com.freedu.socialbaby.domain.model.MediaItem
+import com.freedu.socialbaby.domain.model.Shelf
+import com.freedu.socialbaby.domain.repository.MediaRepository
+import com.freedu.socialbaby.domain.repository.ShelfRepository
+import com.freedu.socialbaby.domain.repository.SettingsRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import javax.inject.Inject
+
+@HiltViewModel
+class HomeViewModel @Inject constructor(
+    private val mediaRepo: MediaRepository,
+    private val shelfRepo: ShelfRepository,
+    settingsRepo: SettingsRepository
+) : ViewModel() {
+
+    val shelves: Flow<List<Shelf>> = shelfRepo.observeAll()
+
+    private val selectedShelf = MutableStateFlow<Long?>(null)
+
+    fun selectShelf(id: Long?) { selectedShelf.value = id }
+
+    val selectedShelfId: StateFlow<Long?> = selectedShelf
+
+    private val _query = MutableStateFlow("")
+    val query: StateFlow<String> = _query
+
+    fun setQuery(q: String) { _query.value = q }
+
+    val pagedMedia: Flow<PagingData<MediaItem>> = combine(selectedShelf, _query) { shelfId, q ->
+        shelfId to q.trim()
+    }.flatMapLatest { (shelfId, q) ->
+        if (q.isEmpty()) {
+            if (shelfId == null) mediaRepo.pagingAll() else mediaRepo.pagingByShelf(shelfId)
+        } else {
+            mediaRepo.pagingSearch(q, shelfId)
+        }
+    }.cachedIn(viewModelScope)
+
+    // For grid without paging fallback (simple list)
+    val allMediaFlow = mediaRepo.observeAll()
+}

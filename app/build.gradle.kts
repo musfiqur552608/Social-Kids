@@ -13,13 +13,13 @@ kotlin {
 }
 
 android {
-    namespace = "com.example.socialbaby"
+    namespace = "com.freedu.socialbaby"
     compileSdk {
         version = release(37)
     }
 
     defaultConfig {
-        applicationId = "com.example.socialbaby"
+        applicationId = "com.freedu.socialbaby"
         minSdk = 24
         targetSdk = 37
         versionCode = 2

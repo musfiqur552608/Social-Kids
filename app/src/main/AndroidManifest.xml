@@ -65,7 +65,7 @@
         <!-- Serves backup CSV files to the system share sheet (Save to Drive) -->
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="com.example.socialbaby.fileprovider"
+            android:authorities="com.freedu.socialbaby.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data
