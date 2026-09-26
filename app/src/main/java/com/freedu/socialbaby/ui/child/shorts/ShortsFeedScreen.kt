@@ -250,12 +250,13 @@ private fun ShortsInlinePage(item: MediaItem, isCurrentPage: Boolean, isMutedGlo
                     autoPlay = isCurrentPage,
                     mute = if (isCurrentPage) isMutedGlobal else true,
                     loop = true,
+                    posterUrl = item.thumbnailPath,
                     onPositionChanged = { pos, delta -> onWatchProgress(item.id, pos, delta) },
                     onWatchTime = { delta -> onWatchTime(item.id, delta) }
                 )
             }
             is MediaItem.GenericLink -> {
-                EmbeddedLinkPlayer(videoId = item.externalUrl, platform = "GENERIC", externalUrl = item.externalUrl, modifier = Modifier.fillMaxSize(), autoPlay = isCurrentPage, isMuted = if (isCurrentPage) isMutedGlobal else true, isCurrentPage = isCurrentPage, onWatchTime = { delta -> onWatchTime(item.id, delta) })
+                EmbeddedLinkPlayer(videoId = item.externalUrl, platform = "GENERIC", externalUrl = item.externalUrl, modifier = Modifier.fillMaxSize(), autoPlay = isCurrentPage, isMuted = if (isCurrentPage) isMutedGlobal else true, isCurrentPage = isCurrentPage, onWatchTime = { delta -> onWatchTime(item.id, delta) }, posterUrl = item.thumbnailPath)
             }
             is MediaItem.LocalImage -> {
                 AsyncImage(model = item.sourceUri, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)

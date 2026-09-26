@@ -57,7 +57,9 @@ fun YoutubePlayer(
     /** Wall-clock watch time for fallback WebView modes (no knowable position). */
     onWatchTime: (deltaMs: Long) -> Unit = {},
     /** When false, the built-in mute overlays are hidden (host screen renders its own). */
-    showInternalMuteControls: Boolean = true
+    showInternalMuteControls: Boolean = true,
+    /** Thumbnail shown instantly while the player boots (kills the black-screen wait). */
+    posterUrl: String? = null
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
     var loading by remember { mutableStateOf(true) }
@@ -162,11 +164,12 @@ fun YoutubePlayer(
     }
 
     // Watchdog: if autoplay was requested but PLAYING never arrives, switch to
-    // the fixed embed. Slow networks get 15s. Off-screen Shorts pages
+    // the fixed embed. 10s — fast enough that a broken embed doesn't feel
+    // frozen, long enough for slow networks. Off-screen Shorts pages
     // (autoPlay=false) are excluded.
     LaunchedEffect(videoId, autoPlay) {
         if (!autoPlay) return@LaunchedEffect
-        kotlinx.coroutines.delay(15000)
+        kotlinx.coroutines.delay(10000)
         if (!reachedPlaying && errorText == null && !useStrippedPage && !fallbackToEmbed) {
             Log.w("KidTubePlayer", "YT watchdog: no PLAYING in 15s, switching to embed id=$videoId")
             fallbackToEmbed = true
@@ -206,7 +209,8 @@ fun YoutubePlayer(
             isMuted = mute,
             // autoPlay mirrors page visibility (Shorts passes autoPlay=isCurrentPage).
             isCurrentPage = autoPlay,
-            onWatchTime = onWatchTime
+            onWatchTime = onWatchTime,
+            posterUrl = posterUrl
         )
         return
     }
@@ -224,7 +228,8 @@ fun YoutubePlayer(
             isMuted = mute,
             // autoPlay mirrors page visibility (Shorts passes autoPlay=isCurrentPage).
             isCurrentPage = autoPlay,
-            onWatchTime = onWatchTime
+            onWatchTime = onWatchTime,
+            posterUrl = posterUrl
         )
         return
     }
@@ -307,6 +312,14 @@ fun YoutubePlayer(
             },
             modifier = Modifier.fillMaxSize()
         )
+
+        // Instant poster: the thumbnail is already cached from the list screen,
+        // so it paints immediately and covers the black WebView while the IFrame
+        // boots (DNS → TLS → player init → first frame). Removed the moment
+        // PLAYING arrives — the real video takes over seamlessly.
+        if (posterUrl != null && !reachedPlaying && errorText == null) {
+            PosterImage(posterUrl, Modifier.fillMaxSize())
+        }
 
         // Block taps on YouTube title/channel (top strip) from leaving the app.
         // Transparent click-consumer keeps playback inside KidTube.

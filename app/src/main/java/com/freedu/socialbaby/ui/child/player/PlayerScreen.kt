@@ -168,6 +168,7 @@ fun PlayerScreen(
                             mute = playerMuted,
                             loop = false,
                             showInternalMuteControls = false,
+                            posterUrl = media.thumbnailPath,
                             onPositionChanged = { pos, delta -> viewModel.saveProgress(pos, delta) },
                             onWatchTime = { delta -> viewModel.recordWatchTime(delta) }
                         )
@@ -223,7 +224,7 @@ fun PlayerScreen(
                 }
                 is MediaItem.GenericLink -> {
                     // Any platform link (your own site) — loads directly in secure WebView, no external app
-                    EmbeddedLinkPlayer(videoId = media.externalUrl, platform = "GENERIC", externalUrl = media.externalUrl, modifier = Modifier.fillMaxSize(), onWatchTime = { delta -> viewModel.recordWatchTime(delta) })
+                    EmbeddedLinkPlayer(videoId = media.externalUrl, platform = "GENERIC", externalUrl = media.externalUrl, modifier = Modifier.fillMaxSize(), onWatchTime = { delta -> viewModel.recordWatchTime(delta) }, posterUrl = media.thumbnailPath)
                 }
             }
 

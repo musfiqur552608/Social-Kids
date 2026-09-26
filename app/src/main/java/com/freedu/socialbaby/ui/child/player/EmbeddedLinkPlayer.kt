@@ -33,6 +33,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -52,13 +54,16 @@ fun EmbeddedLinkPlayer(
     autoPlay: Boolean = true,
     isMuted: Boolean = true,
     isCurrentPage: Boolean = true,
-    onWatchTime: (deltaMs: Long) -> Unit = {}
+    onWatchTime: (deltaMs: Long) -> Unit = {},
+    /** Thumbnail shown instantly while the WebView boots (kills the black-screen wait). */
+    posterUrl: String? = null
 ) {
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var triedFallback by remember { mutableStateOf(false) }
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
     var initialLoadDone by remember { mutableStateOf(false) }
+    var posterVisible by remember { mutableStateOf(posterUrl != null) }
     // Blank-page detector (stripped YouTube path): the page reported "finished"
     // but painted nothing (white screen). A JS probe checks body text seconds
     // later; empty means stuck — show Retry instead of mystery white.
@@ -126,15 +131,39 @@ fun EmbeddedLinkPlayer(
     // A bare WebView loadUrl() sends no referrer context, so YouTube rejects the
     // embed. The documented Android fix: load an HTML shell holding the iframe
     // via loadDataWithBaseURL with a real youtube.com base + referrerpolicy.
-    val youtubeShellHtml: String? = remember(videoId, platform) {
+    // The shell also: (a) shows the poster as its background so the boot gap is
+    // never black, (b) listens for IFrame infoDelivery/onStateChange messages
+    // and sets window.__ytPlaying so the Kotlin probe knows real playback began.
+    val youtubeShellHtml: String? = remember(videoId, platform, posterUrl) {
         if (platform != "YOUTUBE") return@remember null
         val id = videoId.trim()
         if (!id.matches(Regex("[A-Za-z0-9_-]{6,}")) || id.length !in 6..20) return@remember null
+        val posterBg = try {
+            when {
+                posterUrl.isNullOrBlank() -> ""
+                posterUrl.startsWith("/") -> {
+                    val b64 = android.util.Base64.encodeToString(
+                        java.io.File(posterUrl).readBytes(), android.util.Base64.NO_WRAP
+                    )
+                    "body{background:#000 url(data:image/jpeg;base64,$b64) center/cover no-repeat}"
+                }
+                posterUrl.startsWith("http") -> "body{background:#000 url('$posterUrl') center/cover no-repeat}"
+                else -> ""
+            }
+        } catch (_: Exception) { "" }
         """
         <!DOCTYPE html><html><head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
         <meta name="referrer" content="strict-origin-when-cross-origin">
-        <style>html,body{margin:0;padding:0;background:#000;height:100%;overflow:hidden}iframe{width:100%;height:100%;border:0;display:block}</style>
+        <style>html,body{margin:0;padding:0;background:#000;height:100%;overflow:hidden}iframe{width:100%;height:100%;border:0;display:block}$posterBg</style>
+        <script>
+        window.__ytPlaying=false;
+        window.addEventListener('message',function(e){try{
+        var d=e.data;if(typeof d==='string'){d=JSON.parse(d);}if(!d)return;
+        if(d.event==='onStateChange'&&d.info===1)window.__ytPlaying=true;
+        if(d.event==='infoDelivery'&&d.info&&d.info.currentTime>0.05)window.__ytPlaying=true;
+        }catch(_){}});
+        </script>
         </head><body>
         <iframe src="https://www.youtube-nocookie.com/embed/$id?playsinline=1&rel=0&modestbranding=1&controls=1&iv_load_policy=3&autoplay=1&mute=0&enablejsapi=1"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
@@ -167,6 +196,30 @@ fun EmbeddedLinkPlayer(
         pageDiag = null
         loading = true
         initialLoadDone = false
+        posterVisible = posterUrl != null
+    }
+
+    // Poster hide probe: polls the page until real playback starts, then
+    // removes the poster so the video shows seamlessly. Works for all three
+    // platforms — YOUTUBE shell sets window.__ytPlaying via IFrame messages;
+    // GENERIC/YOUTUBE_FULL expose a same-document <video> element.
+    // Hard cap: hide after 10s no matter what so the poster can never stick.
+    LaunchedEffect(embedUrl, posterUrl) {
+        if (posterUrl == null) return@LaunchedEffect
+        val start = System.currentTimeMillis()
+        while (posterVisible) {
+            kotlinx.coroutines.delay(400)
+            if (error != null) { posterVisible = false; break }
+            val wv = webViewRef
+            if (wv != null && initialLoadDone) {
+                val js = "(function(){try{if(window.__ytPlaying)return '1';var v=document.querySelector('video');if(v&&v.currentTime>0.05&&!v.paused)return '1';return '0';}catch(e){return '0';}})();"
+                val probe = suspendCancellableCoroutine<String?> { cont ->
+                    wv.evaluateJavascript(js) { result -> cont.resume(result) }
+                }
+                if (probe?.trim('"') == "1") { posterVisible = false; break }
+            }
+            if (System.currentTimeMillis() - start > 10_000) { posterVisible = false; break }
+        }
     }
 
     Box(modifier.background(Color.Black)) {
@@ -405,6 +458,13 @@ fun EmbeddedLinkPlayer(
                 }
             }
         )
+
+        // Instant poster: covers the boot gap (shell HTML → iframe → first
+        // frame). Removed by the play-probe LaunchedEffect above once the page
+        // reports real playback, or after the 10s hard cap.
+        if (posterVisible && error == null && posterUrl != null) {
+            PosterImage(posterUrl, Modifier.fillMaxSize())
+        }
 
         // YOUTUBE_FULL: swallow taps on YouTube's own chrome (top logo/search/
         // menu bar + right action rail) so a child can never tap out to YouTube.
