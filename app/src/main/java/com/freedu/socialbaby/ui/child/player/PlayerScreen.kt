@@ -169,6 +169,7 @@ fun PlayerScreen(
                             loop = false,
                             showInternalMuteControls = false,
                             posterUrl = media.thumbnailPath,
+                            useWarmPlayer = true,
                             onPositionChanged = { pos, delta -> viewModel.saveProgress(pos, delta) },
                             onWatchTime = { delta -> viewModel.recordWatchTime(delta) }
                         )

@@ -66,6 +66,10 @@ class MainActivity : ComponentActivity() {
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ keepSystemSplash = false }, 700)
         enableEdgeToEdge()
         seedIfNeeded()
+        // Boot the shared warm YouTube player now (1x1 on the decor) so the
+        // first tile tap can start streaming immediately instead of waiting
+        // for WebView + iframe_api init after the click.
+        com.freedu.socialbaby.ui.child.player.WarmYoutubePlayer.install(this)
         setContent {
             SocialBabyTheme {
                 var showComposeSplash by remember { mutableStateOf(true) }

@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -32,6 +33,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.paging.compose.collectAsLazyPagingItems
 import coil.compose.AsyncImage
 import com.freedu.socialbaby.domain.model.MediaItem
+import com.freedu.socialbaby.ui.child.player.WarmYoutubePlayer
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -325,7 +327,37 @@ private fun BigNavCard(
 fun MediaCard(item: MediaItem, onClick: () -> Unit) {
     val cs = MaterialTheme.colorScheme
     Card(
-        modifier = Modifier.fillMaxWidth().clickable { onClick() },
+        modifier = Modifier
+            .fillMaxWidth()
+            // Start fetching the YouTube stream on TOUCH-DOWN — by the time the
+            // tap completes and PlayerScreen composes, the video is already
+            // buffering in the warm player (see WarmYoutubePlayer). If the
+            // touch turns into a scroll, abort immediately so browsing a grid
+            // doesn't keep fetching videos nobody opened.
+            .pointerInput(item) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val down = event.changes.firstOrNull { it.pressed && !it.previousPressed }
+                            ?: continue
+                        WarmYoutubePlayer.preloadItem(item)
+                        val startPos = down.position
+                        val slop = viewConfiguration.touchSlop
+                        while (true) {
+                            val ev = awaitPointerEvent()
+                            val c = ev.changes.firstOrNull() ?: break
+                            if (!c.pressed) break
+                            val dx = c.position.x - startPos.x
+                            val dy = c.position.y - startPos.y
+                            if (dx * dx + dy * dy > slop * slop) {
+                                WarmYoutubePlayer.cancelPreload()
+                                break
+                            }
+                        }
+                    }
+                }
+            }
+            .clickable { onClick() },
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = cs.surfaceContainer),
         elevation = CardDefaults.cardElevation(2.dp)

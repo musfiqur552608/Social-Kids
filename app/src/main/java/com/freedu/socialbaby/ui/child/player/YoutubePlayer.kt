@@ -59,7 +59,9 @@ fun YoutubePlayer(
     /** When false, the built-in mute overlays are hidden (host screen renders its own). */
     showInternalMuteControls: Boolean = true,
     /** Thumbnail shown instantly while the player boots (kills the black-screen wait). */
-    posterUrl: String? = null
+    posterUrl: String? = null,
+    /** Use the app-wide warm player (pre-booted at app start, video possibly pre-buffered). */
+    useWarmPlayer: Boolean = false
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
     var loading by remember { mutableStateOf(true) }
@@ -100,6 +102,71 @@ fun YoutubePlayer(
         try {
             if (wantMuted) p.mute() else { p.unMute(); p.setVolume(100) }
         } catch (_: Exception) {}
+    }
+
+    fun handleError(error: PlayerConstants.PlayerError) {
+        loading = false
+        when (error) {
+            // Deleted / private video, or bad request: nothing can play it.
+            PlayerConstants.PlayerError.VIDEO_NOT_FOUND,
+            PlayerConstants.PlayerError.INVALID_PARAMETER_IN_REQUEST -> {
+                errorText = "Video not found or private — ask a parent to pick another video."
+            }
+            // Owner disabled embedding, region/age block, or any other
+            // playback refusal (your recurring "152" screen): NO embed
+            // player can play these — not the IFrame library, not the
+            // nocookie embed (it just renders the same in-frame error
+            // with no recovery). Use the stripped in-app page instead:
+            // same video, YouTube chrome hidden, exits blocked.
+            else -> {
+                if (externalUrl != null) useStrippedPage = true
+                else errorText = "YouTube couldn't start this video — check internet and retry."
+            }
+        }
+    }
+
+    // Cold-path listener: registered inside initialize() when this screen
+    // creates its own YouTubePlayerView (Shorts pages, fallback flows).
+    val coldListener = remember {
+        object : AbstractYouTubePlayerListener() {
+            override fun onReady(player: YouTubePlayer) {
+                youTubePlayer = player
+                try { player.addListener(tracker) } catch (_: Exception) {}
+                loading = false
+                Log.d("KidTubePlayer", "YT ready id=$videoId autoplay=$autoPlay")
+                onReady?.invoke()
+                // Set mute BEFORE load for reliable autoplay (fixes tap to unmute confusion).
+                // YouTube forces muted autoplay on mobile — we request unmuted, then
+                // re-assert after load; our overlay button is the single UX for mute.
+                if (appMuted) player.mute() else player.unMute()
+                if (autoPlay) player.loadVideo(videoId, 0f) else player.cueVideo(videoId, 0f)
+                // Ensure unmuted after load (YouTube may reset mute on load)
+                CoroutineScope(Dispatchers.Main).launch {
+                    delay(400)
+                    if (appMuted) player.mute() else { player.unMute(); player.setVolume(100) }
+                }
+            }
+            override fun onStateChange(player: YouTubePlayer, state: PlayerConstants.PlayerState) {
+                Log.d("KidTubePlayer", "YT state=$state id=$videoId")
+                if (state == PlayerConstants.PlayerState.PLAYING) {
+                    loading = false
+                    reachedPlaying = true
+                    videoEnded = false
+                }
+                if (state == PlayerConstants.PlayerState.ENDED) {
+                    if (loop) {
+                        player.seekTo(0f)
+                        player.play()
+                    } else {
+                        videoEnded = true
+                    }
+                }
+            }
+            override fun onError(player: YouTubePlayer, error: PlayerConstants.PlayerError) {
+                Log.w("KidTubePlayer", "YT error=$error id=$videoId")
+                handleError(error)
+            }
+        }
     }
 
     // Handle mute without reloading
@@ -176,6 +243,86 @@ fun YoutubePlayer(
         }
     }
 
+    // Warm-player path: the view + YouTubePlayer are shared across screens and
+    // booted at app start; the tile press (WarmYoutubePlayer.preload) already
+    // started fetching this video. Wire this screen's state to that player
+    // instead of initializing a new one — by the time we attach, the video is
+    // usually already PLAYING, so there is no boot wait at all.
+    // Disabled while the fallback flows take over (the pool view is handed
+    // back on release and must not be driven by this screen anymore).
+    if (useWarmPlayer && isValidId && !useStrippedPage && !fallbackToEmbed) {
+        val poolReady by WarmYoutubePlayer.readyState
+
+        val warmListener = remember {
+            object : AbstractYouTubePlayerListener() {
+                override fun onStateChange(player: YouTubePlayer, state: PlayerConstants.PlayerState) {
+                    if (state == PlayerConstants.PlayerState.PLAYING) {
+                        loading = false
+                        reachedPlaying = true
+                        videoEnded = false
+                    }
+                    if (state == PlayerConstants.PlayerState.ENDED) {
+                        if (loop) {
+                            player.seekTo(0f)
+                            player.play()
+                        } else {
+                            videoEnded = true
+                        }
+                    }
+                }
+                override fun onError(player: YouTubePlayer, error: PlayerConstants.PlayerError) {
+                    Log.w("KidTubePlayer", "YT warm error=$error id=$videoId")
+                    handleError(error)
+                }
+            }
+        }
+
+        DisposableEffect(poolReady, videoId) {
+            val p = WarmYoutubePlayer.player
+            if (p != null) p.addListener(warmListener)
+            onDispose { if (p != null) p.removeListener(warmListener) }
+        }
+
+        LaunchedEffect(poolReady, videoId) {
+            if (!poolReady) return@LaunchedEffect
+            val p = WarmYoutubePlayer.player ?: return@LaunchedEffect
+            youTubePlayer = p
+            loading = false
+            onReady?.invoke()
+            reachedPlaying = false
+            if (WarmYoutubePlayer.currentVideoId == videoId) {
+                // Press-preload already fetched this video — resume instantly
+                // instead of restarting (restarting would cost another fetch).
+                when (WarmYoutubePlayer.lastState) {
+                    PlayerConstants.PlayerState.PLAYING -> {
+                        reachedPlaying = true
+                        try { p.play() } catch (_: Exception) {}
+                    }
+                    PlayerConstants.PlayerState.PAUSED,
+                    PlayerConstants.PlayerState.ENDED -> {
+                        try { p.seekTo(0f); p.play() } catch (_: Exception) {}
+                    }
+                    else -> if (autoPlay) { try { p.play() } catch (_: Exception) {} }
+                }
+                if (!autoPlay) { try { p.pause() } catch (_: Exception) {} }
+            } else {
+                // Opened without a press-preload (history/other entry) — still
+                // skips the whole player boot, only the stream fetch remains.
+                if (autoPlay) p.loadVideo(videoId, 0f) else p.cueVideo(videoId, 0f)
+            }
+            WarmYoutubePlayer.consumeLastError()?.let { handleError(it) }
+            applyMute(p, appMuted)
+            try { p.addListener(tracker) } catch (_: Exception) {}
+        }
+
+        DisposableEffect(videoId) {
+            onDispose {
+                try { youTubePlayer?.removeListener(tracker) } catch (_: Exception) {}
+                youTubePlayer = null
+            }
+        }
+    }
+
     // Bad ID (old hashcode items, truncated paste) — explain, don't play.
     if (!isValidId) {
         Box(modifier.background(Color.Black).padding(24.dp), contentAlignment = Alignment.Center) {
@@ -237,77 +384,39 @@ fun YoutubePlayer(
     Box(modifier.background(Color.Black)) {
         AndroidView(
             factory = { ctx ->
-                YouTubePlayerView(ctx).apply {
-                    enableAutomaticInitialization = false
-                    lifecycleOwner.lifecycle.addObserver(this)
-                    // origin MUST be a trusted domain. Without it the library falls
-                    // back to https://<packageName>, which YouTube rejects with
-                    // "Error 152" (missing/invalid Referer). Library docs recommend
-                    // https://www.youtube.com — it is also the WebView base URL.
-                    val iframeOptions = IFramePlayerOptions.Builder()
-                        .controls(1)
-                        .rel(0)
-                        .ivLoadPolicy(3)
-                        .ccLoadPolicy(0)
-                        .modestBranding(1)
-                        .origin("https://www.youtube.com")
-                        .build()
-                    initialize(object : AbstractYouTubePlayerListener() {
-                        override fun onReady(player: YouTubePlayer) {
-                            youTubePlayer = player
-                            try { player.addListener(tracker) } catch (_: Exception) {}
-                            loading = false
-                            Log.d("KidTubePlayer", "YT ready id=$videoId autoplay=$autoPlay")
-                            onReady?.invoke()
-                            // Set mute BEFORE load for reliable autoplay (fixes tap to unmute confusion).
-                            // YouTube forces muted autoplay on mobile — we request unmuted, then
-                            // re-assert after load; our overlay button is the single UX for mute.
-                            if (appMuted) player.mute() else player.unMute()
-                            if (autoPlay) player.loadVideo(videoId, 0f) else player.cueVideo(videoId, 0f)
-                            // Ensure unmuted after load (YouTube may reset mute on load)
-                            CoroutineScope(Dispatchers.Main).launch {
-                                delay(400)
-                                if (appMuted) player.mute() else { player.unMute(); player.setVolume(100) }
-                            }
-                        }
-                        override fun onStateChange(player: YouTubePlayer, state: PlayerConstants.PlayerState) {
-                            Log.d("KidTubePlayer", "YT state=$state id=$videoId")
-                            if (state == PlayerConstants.PlayerState.PLAYING) {
-                                loading = false
-                                reachedPlaying = true
-                                videoEnded = false
-                            }
-                            if (state == PlayerConstants.PlayerState.ENDED) {
-                                if (loop) {
-                                    player.seekTo(0f)
-                                    player.play()
-                                } else {
-                                    videoEnded = true
-                                }
-                            }
-                        }
-                        override fun onError(player: YouTubePlayer, error: PlayerConstants.PlayerError) {
-                            loading = false
-                            Log.w("KidTubePlayer", "YT error=$error id=$videoId")
-                            when (error) {
-                                // Deleted / private video, or bad request: nothing can play it.
-                                PlayerConstants.PlayerError.VIDEO_NOT_FOUND,
-                                PlayerConstants.PlayerError.INVALID_PARAMETER_IN_REQUEST -> {
-                                    errorText = "Video not found or private — ask a parent to pick another video."
-                                }
-                                // Owner disabled embedding, region/age block, or any other
-                                // playback refusal (your recurring "152" screen): NO embed
-                                // player can play these — not the IFrame library, not the
-                                // nocookie embed (it just renders the same in-frame error
-                                // with no recovery). Use the stripped in-app page instead:
-                                // same video, YouTube chrome hidden, exits blocked.
-                                else -> {
-                                    if (externalUrl != null) useStrippedPage = true
-                                    else errorText = "YouTube couldn't start this video — check internet and retry."
-                                }
-                            }
-                        }
-                    }, iframeOptions)
+                if (useWarmPlayer) {
+                    // Shared pre-booted view (boots at app start, video possibly
+                    // pre-buffered by the tile press). Never initialized here —
+                    // wiring above attaches state once the pool player is ready.
+                    WarmYoutubePlayer.acquire(ctx)
+                } else {
+                    YouTubePlayerView(ctx).apply {
+                        enableAutomaticInitialization = false
+                        lifecycleOwner.lifecycle.addObserver(this)
+                        // origin MUST be a trusted domain. Without it the library falls
+                        // back to https://<packageName>, which YouTube rejects with
+                        // "Error 152" (missing/invalid Referer). Library docs recommend
+                        // https://www.youtube.com — it is also the WebView base URL.
+                        val iframeOptions = IFramePlayerOptions.Builder()
+                            .controls(1)
+                            .rel(0)
+                            .ivLoadPolicy(3)
+                            .ccLoadPolicy(0)
+                            .modestBranding(1)
+                            .origin("https://www.youtube.com")
+                            .build()
+                        initialize(coldListener, iframeOptions)
+                    }
+                }
+            },
+            onRelease = { v ->
+                if (useWarmPlayer) {
+                    // Keep it alive — park it back in the invisible host for the
+                    // next tap (release() mutes + pauses + rehosts inside).
+                    WarmYoutubePlayer.release(v)
+                } else {
+                    try { lifecycleOwner.lifecycle.removeObserver(v) } catch (_: Exception) {}
+                    try { v.release() } catch (_: Exception) {}
                 }
             },
             modifier = Modifier.fillMaxSize()
