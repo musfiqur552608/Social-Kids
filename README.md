@@ -85,7 +85,7 @@ First launch: Home → `Parents` → set PIN → `Add Content` → `Record`/`Pic
 `ui/theme/Theme.kt:13` `SocialKidsLightScheme` `KidYellowDark/primaryContainer KidYellow` vs `DarkScheme` `KidYellow/primaryContainer KidYellowDark`, `surfaceContainer #F8F0DA/#252A2E`. All screens `MaterialTheme.colorScheme` (no hardcoded `0xFFFFFBF0`). `SocialBabyTheme(darkTheme=isSystemInDarkTheme())` auto. Logo `res/drawable/social_kids_logo_red.xml:1` VectorDrawable `512` (gradient `FF7E7E→A30E26`, folder, play `66r`, face+blush, sparkles) source `assets/social_kids_logo_red.svg:1`, launcher `AndroidManifest.xml:23` `mipmap-anydpi-v26/ic_launcher.xml:3`.
 
 ## 9. Permissions (`AndroidManifest.xml:5`)
-`INTERNET`, `ACCESS_NETWORK_STATE`, `CAMERA`, `RECORD_AUDIO` (record), `READ_MEDIA_VIDEO/IMAGES` (+ `READ_EXTERNAL_STORAGE` max 32), `USE_BIOMETRIC`, `hardwareAccelerated`, `usesCleartextTraffic=true`. No `REQUEST_INSTALL_PACKAGES`/`MANAGE_EXTERNAL_STORAGE`.
+`INTERNET`, `ACCESS_NETWORK_STATE`, `CAMERA`, `RECORD_AUDIO` (record), `USE_BIOMETRIC`, `hardwareAccelerated`, `usesCleartextTraffic=true`. No broad media/storage permissions (`READ_MEDIA_VIDEO/IMAGES`/`READ_EXTERNAL_STORAGE` removed per Google Play policy; uses system Storage Access Framework picker `ActivityResultContracts.OpenDocument()`). No `REQUEST_INSTALL_PACKAGES`/`MANAGE_EXTERNAL_STORAGE`.
 
 ## 10. Publish (Play Console — you have account)
 *Change `com.example.*` (blocked) → `com.socialkids.app`.*
